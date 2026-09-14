@@ -1,59 +1,95 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f6f1e8">
-<link rel="manifest" href="manifest.json">
-<title>米白記帳</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f1e8"><link rel="manifest" href="manifest.json"><title>米白記帳 V2</title>
 <style>
 :root{--bg:#f6f1e8;--card:#fffdf8;--soft:#f0e9dd;--text:#403a32;--muted:#91877a;--green:#73866d;--green-soft:#e1e8dc;--red:#c47d68;--line:#e5dccf}
-*{box-sizing:border-box}body{margin:0;background:#e9e1d5;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif}
-.app{width:min(430px,100%);min-height:100vh;margin:auto;background:var(--bg);padding-bottom:30px}
-header{padding:24px 20px 12px;display:flex;justify-content:space-between}.title{font-size:21px;font-weight:800}.date{font-size:12px;color:var(--muted);margin-top:4px}
-main{padding:0 18px}.type{display:grid;grid-template-columns:1fr 1fr;background:var(--soft);border-radius:15px;padding:4px;margin:8px 0 12px}.type button{border:0;background:transparent;padding:11px;border-radius:12px;color:var(--muted);font-weight:700}.type .on{background:var(--card);color:var(--text)}
-.amount{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;text-align:right;margin-bottom:12px}.amount small{display:block;text-align:left;color:var(--muted)}.amount strong{font-size:42px;display:block;margin-top:5px}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:15px}.label{font-size:12px;color:var(--muted);margin:0 0 9px}.cats{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:15px}.cat,.account button{border:1px solid var(--line);background:#faf5ec;border-radius:14px;padding:10px 3px;font-size:11px;color:var(--text);min-height:55px}.cat.sel,.account .sel{background:var(--green-soft);border-color:var(--green);font-weight:800}.account{display:flex;gap:8px;overflow:auto}.account button{min-height:44px;padding:9px 13px;white-space:nowrap}
-.keypad{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:14px}.key{border:1px solid var(--line);background:var(--card);border-radius:17px;min-height:58px;font-size:22px;font-weight:750;color:var(--text)}.key.op{color:var(--green)}.key.del{color:var(--red)}.key.ok{background:var(--green);color:white;border-color:var(--green)}
-.note{width:100%;border:1px solid var(--line);background:#faf5ec;border-radius:14px;padding:12px;margin-top:14px;font-size:14px;outline:none;color:var(--text)}.msg{min-height:20px;color:var(--red);font-size:12px;margin-top:6px}.saved{background:var(--green-soft);color:#52614d;padding:10px 12px;border-radius:13px;font-size:13px;margin-top:10px;display:none}
-.history{margin-top:18px}.history h3{font-size:16px}.entry{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin:7px 0;display:flex;justify-content:space-between}.entry small{display:block;color:var(--muted);margin-top:3px}
-@media(max-width:340px){.cats{grid-template-columns:repeat(3,1fr)}.key{min-height:54px}}
-</style>
-</head>
-<body>
-<div class="app">
-<header><div><div class="title">米白記帳</div><div class="date" id="today"></div></div><div>🧾</div></header>
+*{box-sizing:border-box}body{margin:0;background:#e9e1d5;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif}.app{width:min(430px,100%);min-height:100vh;margin:auto;background:var(--bg);padding-bottom:86px}
+header{padding:23px 19px 12px;display:flex;justify-content:space-between;align-items:center}.title{font-size:21px;font-weight:800}.sub{font-size:12px;color:var(--muted);margin-top:4px}main{padding:0 18px}.page{display:none}.page.active{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;margin:8px 0 13px}.label{font-size:12px;color:var(--muted)}.big{font-size:39px;font-weight:800;margin:6px 0 15px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}.mini{background:#faf5ec;border-radius:15px;padding:12px}.mini b{display:block;font-size:18px;margin-top:4px}.income{color:var(--green)}.expense{color:var(--red)}
+h2{font-size:17px;margin:22px 3px 11px}.barrow{display:flex;gap:9px;align-items:center;margin:13px 0}.barrow span:first-child{width:62px;font-size:13px}.bar{height:8px;background:#eee6da;border-radius:99px;flex:1}.fill{height:100%;background:var(--green);border-radius:99px}.amt{width:72px;text-align:right;font-size:13px;font-weight:700}
+.entry{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}.entry:last-child{border-bottom:0}.emo{width:39px;height:39px;border-radius:13px;background:#f2ece1;display:grid;place-items:center}.desc{flex:1;min-width:0}.desc b{font-size:14px}.desc small{display:block;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.amountR{font-weight:800}.amountR.out{color:var(--red)}.del{border:0;background:#f6e3dc;color:var(--red);border-radius:10px;padding:7px 9px}
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(430px,100%);height:70px;background:rgba(255,253,248,.97);border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;z-index:5}.nav{border:0;background:none;color:var(--muted);font-size:11px}.nav.active{color:var(--green);font-weight:800}.plus{width:54px;height:54px;border-radius:19px;background:var(--green);color:#fff;border:0;font-size:27px;margin-top:-24px}
+.type{display:grid;grid-template-columns:1fr 1fr;background:var(--soft);border-radius:15px;padding:4px;margin:8px 0 12px}.type button{border:0;background:transparent;padding:11px;border-radius:12px;color:var(--muted);font-weight:700}.type .on{background:var(--card);color:var(--text)}
+.amount{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;text-align:right}.amount small{display:block;text-align:left;color:var(--muted)}.amount strong{font-size:42px;display:block;margin-top:5px}.panel{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:15px;margin-top:12px}.cats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.cat,.account button,.addcat{border:1px solid var(--line);background:#faf5ec;border-radius:14px;padding:10px 6px;color:var(--text);min-height:54px;font-size:12px}.cat.sel,.account .sel{background:var(--green-soft);border-color:var(--green);font-weight:800}.account{display:flex;gap:8px;overflow:auto}.account button{min-height:44px;white-space:nowrap;padding:9px 13px}.keypad{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:14px}.key{border:1px solid var(--line);background:var(--card);border-radius:17px;min-height:58px;font-size:22px;font-weight:750;color:var(--text)}.key.op{color:var(--green)}.key.del{color:var(--red)}.key.ok{background:var(--green);color:#fff;border-color:var(--green)}.note{width:100%;border:1px solid var(--line);background:#faf5ec;border-radius:14px;padding:12px;margin-top:14px;font-size:14px;outline:none;color:var(--text)}
+.rowbtn{display:flex;gap:8px}.primary{border:0;background:var(--green);color:#fff;border-radius:13px;padding:11px 14px;font-weight:800}.secondary{border:1px solid var(--line);background:#faf5ec;color:var(--text);border-radius:13px;padding:11px 14px}.filter{display:flex;gap:8px;overflow:auto;margin-bottom:10px}.filter button{white-space:nowrap;border:1px solid var(--line);background:#faf5ec;border-radius:12px;padding:9px 12px;color:var(--muted)}.filter .sel{background:var(--green-soft);color:var(--text);border-color:var(--green)}
+.incomeBox{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;margin-top:8px}.incomeTotal{font-size:35px;font-weight:800;color:var(--green);margin:5px 0 15px}.forecast{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.forecast div{background:#faf5ec;border-radius:13px;padding:10px 5px;text-align:center;font-size:11px}.forecast b{display:block;margin-top:4px;font-size:14px}
+.modal{display:none;position:fixed;inset:0;background:rgba(50,42,32,.25);z-index:20;align-items:flex-end;justify-content:center}.sheet{width:min(430px,100%);background:var(--card);border-radius:27px 27px 0 0;padding:23px 19px 30px;max-height:88vh;overflow:auto}.sheet h2{margin:0 0 16px}.close{float:right;border:0;background:none;color:var(--muted);font-size:18px}
+.form{display:grid;gap:9px}.form input,.form select{border:1px solid var(--line);background:#faf5ec;border-radius:13px;padding:12px;font-size:15px;color:var(--text)}
+@media(max-width:340px){.forecast{grid-template-columns:repeat(2,1fr)}}
+</style></head>
+<body><div class="app">
+<header><div><div class="title">米白記帳</div><div class="sub" id="date"></div></div><div>🧾</div></header>
 <main>
+<section id="home" class="page active">
+<div class="card"><div class="label">目前可用資金</div><div class="big" id="balance">$0</div><div class="grid2"><div class="mini income"><div class="label">本月收入</div><b id="homeIncome">$0</b></div><div class="mini expense"><div class="label">本月支出</div><b id="homeExpense">$0</b></div></div></div>
+<h2>錢都花去哪？</h2><div class="card" id="categorySummary"></div>
+<h2>最近紀錄</h2><div class="card" id="recent"></div>
+</section>
+
+<section id="add" class="page">
 <div class="type"><button class="on" id="expenseBtn">支出</button><button id="incomeBtn">收入</button></div>
 <div class="amount"><small>金額</small><strong id="display">$0</strong></div>
-<div class="panel">
-<p class="label">分類</p><div class="cats">
-<button class="cat sel" data-cat="吃飯">🍚<br>吃飯</button><button class="cat" data-cat="房租">🏠<br>房租</button><button class="cat" data-cat="交通">🚗<br>交通</button><button class="cat" data-cat="娛樂">🎮<br>娛樂</button><button class="cat" data-cat="固定支出">📌<br>固定支出</button>
+<div class="panel"><div class="label" style="margin-bottom:9px">分類</div><div class="cats" id="cats"></div><div class="label" style="margin:16px 0 9px">付款／入帳帳戶</div><div class="account" id="accounts"><button class="sel" data-account="現金">💵 現金</button><button data-account="銀行">🏦 銀行</button><button data-account="信用卡">💳 信用卡</button></div></div>
+<div class="keypad"><button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button><button class="key del" data-k="del">⌫</button><button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button><button class="key op" data-k="plus">＋</button><button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button><button class="key op" data-k="minus">－</button><button class="key" data-k="00">00</button><button class="key" data-k="0">0</button><button class="key" data-k="dot">.</button><button class="key ok" id="save">✓</button></div>
+<input class="note" id="note" placeholder="備註（選填）"><div id="msg" style="color:var(--red);font-size:12px;min-height:18px"></div>
+</section>
+
+<section id="income" class="page">
+<div class="incomeBox"><div class="label">我的收入</div><div class="incomeTotal" id="incomeTotal">$0</div><div class="forecast"><div>本週<b id="weekIncome">$0</b></div><div>本月<b id="monthIncome">$0</b></div><div>今年<b id="yearIncome">$0</b></div><div>筆數<b id="incomeCount">0</b></div></div></div>
+<h2>收入紀錄</h2><div class="filter"><button class="sel" data-if="all">全部</button><button data-if="week">本週</button><button data-if="month">本月</button></div><div class="card" id="incomeList"></div>
+</section>
+
+<section id="stats" class="page">
+<h2>預計花費</h2><div class="card"><div class="label">本週支出</div><div class="big" style="font-size:32px" id="weekExpense">$0</div><div id="weekPlan"></div></div>
+<h2>各項目花費</h2><div class="card" id="statsCats"></div>
+<h2>每週花費</h2><div class="card" id="weeklyStats"></div>
+</section>
+
+<section id="account" class="page">
+<h2>帳戶</h2><div class="card" id="accountSummary"></div>
+<h2>類別管理</h2><div class="card"><div id="catManage"></div><button class="primary" id="addCat">＋ 新增類別</button></div>
+<h2>所有紀錄</h2><div class="card" id="allEntries"></div>
+</section>
+</main>
+<nav><button class="nav active" data-page="home">⌂<br>首頁</button><button class="nav" data-page="income">↗<br>我的收入</button><button class="plus" data-page="add">＋</button><button class="nav" data-page="stats">◷<br>統計</button><button class="nav" data-page="account">▣<br>帳戶</button></nav>
 </div>
-<p class="label">付款帳戶</p><div class="account"><button class="sel" data-account="現金">💵 現金</button><button data-account="銀行">🏦 銀行</button><button data-account="信用卡">💳 信用卡</button></div>
-</div>
-<div class="keypad">
-<button class="key" data-key="7">7</button><button class="key" data-key="8">8</button><button class="key" data-key="9">9</button><button class="key del" data-key="del">⌫</button>
-<button class="key" data-key="4">4</button><button class="key" data-key="5">5</button><button class="key" data-key="6">6</button><button class="key op" data-key="plus">＋</button>
-<button class="key" data-key="1">1</button><button class="key" data-key="2">2</button><button class="key" data-key="3">3</button><button class="key op" data-key="minus">－</button>
-<button class="key" data-key="00">00</button><button class="key" data-key="0">0</button><button class="key" data-key="dot">.</button><button class="key ok" id="save">✓</button>
-</div>
-<input class="note" id="note" placeholder="備註（選填）"><div class="msg" id="msg"></div><div class="saved" id="saved"></div>
-<section class="history"><h3>最近紀錄</h3><div id="history"></div></section>
-</main></div>
+
+<div class="modal" id="modal"><div class="sheet"><button class="close" id="close">✕</button><h2>新增類別</h2><form class="form" id="catForm"><input id="catName" placeholder="例如：購物" required maxlength="12"><input id="catEmoji" placeholder="圖示，例如 🛍️" maxlength="3"><button class="primary" type="submit">新增</button></form></div></div>
 <script>
-const KEY="mibeiji_entries_v1";let entries=JSON.parse(localStorage.getItem(KEY)||"[]"),value="0",stored=null,operator=null,fresh=true,type="expense";
-const $=id=>document.getElementById(id);function render(){ $("display").textContent="$"+Number(value||0).toLocaleString("en-US",{maximumFractionDigits:2});}
-function inputDigit(d){if(fresh){value=d==="00"?"0":d;fresh=false}else if(!(d==="00"&&value==="0")){if(value==="0"&&d!==".")value=d;else if(d==="."&&!value.includes("."))value+=".";else if(d!==".")value+=d}render()}
-function calc(){if(stored===null||!operator)return Number(value);let b=Number(value),r=operator==="+"?stored+b:stored-b;value=String(r);stored=null;operator=null;fresh=true;render();return r}
-document.querySelectorAll("[data-key]").forEach(b=>b.onclick=()=>{let k=b.dataset.key;if(/^\d+$/.test(k))inputDigit(k);else if(k==="dot")inputDigit(".");else if(k==="del"){value=value.length>1?value.slice(0,-1):"0";render()}else{if(stored!==null&&!fresh)calc();stored=Number(value);operator=k==="plus"?"+":"-";fresh=true}});
-document.querySelectorAll(".cat").forEach(b=>b.onclick=()=>{document.querySelectorAll(".cat").forEach(x=>x.classList.remove("sel"));b.classList.add("sel")});
+const STORE="mibeiji_v2";let state=JSON.parse(localStorage.getItem(STORE)||"null")||{entries:[],cats:[["🍚","吃飯"],["🏠","房租"],["🚗","交通"],["🎮","娛樂"],["📌","固定支出"]]};
+let value="0",stored=null,operator=null,fresh=true,type="expense",incomeFilter="all";
+const $=x=>document.getElementById(x),money=n=>"$"+Number(n||0).toLocaleString("en-US",{maximumFractionDigits:2});
+function saveState(){localStorage.setItem(STORE,JSON.stringify(state))}
+function dateStr(d){return new Date(d).toLocaleDateString("zh-TW",{month:"2-digit",day:"2-digit"})}
+function sameMonth(d){let x=new Date(d),n=new Date();return x.getFullYear()==n.getFullYear()&&x.getMonth()==n.getMonth()}
+function sameYear(d){return new Date(d).getFullYear()==new Date().getFullYear()}
+function weekStart(){let n=new Date(),day=n.getDay();n.setHours(0,0,0,0);n.setDate(n.getDate()-(day||7)+1);return n}
+function sameWeek(d){return new Date(d)>=weekStart()}
+function sum(arr){return arr.reduce((s,e)=>s+(e.type==="income"?e.amount:-e.amount),0)}
+function expenseSum(arr){return arr.filter(e=>e.type==="expense").reduce((s,e)=>s+e.amount,0)}
+function incomeSum(arr){return arr.filter(e=>e.type==="income").reduce((s,e)=>s+e.amount,0)}
+function renderCats(){ $("cats").innerHTML=state.cats.map((c,i)=>`<button class="cat ${i===0?"sel":""}" data-cat="${c[1]}">${c[0]}<br>${c[1]}</button>`).join("");document.querySelectorAll(".cat").forEach(b=>b.onclick=()=>{document.querySelectorAll(".cat").forEach(x=>x.classList.remove("sel"));b.classList.add("sel")})}
+function renderHome(){let month=state.entries.filter(e=>sameMonth(e.date)), inc=incomeSum(month),exp=expenseSum(month);$("homeIncome").textContent=money(inc);$("homeExpense").textContent=money(exp);$("balance").textContent=money(sum(state.entries));let max=Math.max(1,...state.cats.map(c=>expenseSum(month.filter(e=>e.cat===c[1]))));$("categorySummary").innerHTML=state.cats.map(c=>{let a=expenseSum(month.filter(e=>e.cat===c[1]));return `<div class="barrow"><span>${c[0]} ${c[1]}</span><div class="bar"><div class="fill" style="width:${a/max*100}%"></div></div><span class="amt">${money(a)}</span></div>`}).join("");renderRecent()}
+function renderRecent(){let a=state.entries.slice().sort((x,y)=>y.id-x.id).slice(0,8);$("recent").innerHTML=a.length?a.map(entryHTML).join(""):"<span style='color:var(--muted);font-size:13px'>還沒有紀錄</span>"}
+function entryHTML(e){return `<div class="entry"><div class="emo">${state.cats.find(c=>c[1]===e.cat)?.[0]||"•"}</div><div class="desc"><b>${e.cat}</b><small>${dateStr(e.date)} · ${e.account}${e.note?" · "+e.note:""}</small></div><div class="amountR ${e.type==="expense"?"out":""}">${e.type==="expense"?"-":"+"}${money(e.amount).slice(1)}</div><button class="del" data-del="${e.id}">刪除</button></div>`}
+function bindDelete(){document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{if(confirm("確定刪除這筆紀錄？")){state.entries=state.entries.filter(e=>e.id!=b.dataset.del);saveState();renderAll()}})}
+function renderIncome(){let a=state.entries.filter(e=>e.type==="income"),f=incomeFilter==="week"?a.filter(e=>sameWeek(e.date)):incomeFilter==="month"?a.filter(e=>sameMonth(e.date)):a;let total=incomeSum(a);$("incomeTotal").textContent=money(total);$("weekIncome").textContent=money(a.filter(e=>sameWeek(e.date)).reduce((s,e)=>s+e.amount,0));$("monthIncome").textContent=money(a.filter(e=>sameMonth(e.date)).reduce((s,e)=>s+e.amount,0));$("yearIncome").textContent=money(a.filter(e=>sameYear(e.date)).reduce((s,e)=>s+e.amount,0));$("incomeCount").textContent=a.length;$("incomeList").innerHTML=f.length?f.sort((x,y)=>y.id-x.id).map(entryHTML).join(""):"<span style='color:var(--muted);font-size:13px'>目前沒有收入紀錄</span>";bindDelete()}
+function renderStats(){let week=state.entries.filter(e=>e.type==="expense"&&sameWeek(e.date));$("weekExpense").textContent=money(expenseSum(week));$("weekPlan").innerHTML=state.cats.map(c=>{let a=expenseSum(week.filter(e=>e.cat===c[1]));return `<div class="barrow"><span>${c[0]} ${c[1]}</span><div class="bar"><div class="fill" style="width:${Math.min(a/Math.max(1,expenseSum(week))*100,100)}%"></div></div><span class="amt">${money(a)}</span></div>`}).join("");let month=state.entries.filter(e=>e.type==="expense"&&sameMonth(e.date));let max=Math.max(1,...state.cats.map(c=>expenseSum(month.filter(e=>e.cat===c[1]))));$("statsCats").innerHTML=state.cats.map(c=>{let a=expenseSum(month.filter(e=>e.cat===c[1]));return `<div class="barrow"><span>${c[0]} ${c[1]}</span><div class="bar"><div class="fill" style="width:${a/max*100}%"></div></div><span class="amt">${money(a)}</span></div>`}).join("");let weeks={};state.entries.filter(e=>e.type==="expense").forEach(e=>{let d=new Date(e.date),k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()-((d.getDay()+6)%7)).padStart(2,"0")}`;weeks[k]=(weeks[k]||0)+e.amount});$("weeklyStats").innerHTML=Object.entries(weeks).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,8).map(([k,v])=>`<div class="barrow"><span>${k.slice(5)}</span><div class="bar"><div class="fill" style="width:${Math.min(v/Math.max(1,...Object.values(weeks))*100,100)}%"></div></div><span class="amt">${money(v)}</span></div>`).join("")||"<span style='color:var(--muted)'>尚無支出</span>"}
+function renderAccount(){let groups=["現金","銀行","信用卡"];$("accountSummary").innerHTML=groups.map(a=>{let n=state.entries.filter(e=>e.account===a);let v=sum(n);return `<div class="barrow"><span>${a}</span><div class="bar"><div class="fill" style="width:${Math.min(Math.abs(v)/Math.max(1,Math.abs(sum(state.entries)))*100,100)}%"></div></div><span class="amt">${money(v)}</span></div>`}).join("");$("catManage").innerHTML=state.cats.map((c,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)"><span>${c[0]} ${c[1]}</span>${state.cats.length>1?`<button class="del" data-catdel="${i}">刪除</button>`:""}</div>`).join("");document.querySelectorAll("[data-catdel]").forEach(b=>b.onclick=()=>{let c=state.cats[b.dataset.catdel];if(state.entries.some(e=>e.cat===c[1])){alert("這個類別已有紀錄，請先保留它，避免舊帳失去分類。");return}state.cats.splice(b.dataset.catdel,1);saveState();renderAll()});$("allEntries").innerHTML=state.entries.length?state.entries.slice().sort((x,y)=>y.id-x.id).map(entryHTML).join(""):"<span style='color:var(--muted);font-size:13px'>尚無紀錄</span>";bindDelete()}
+function renderAll(){renderCats();renderHome();renderIncome();renderStats();renderAccount()}
+document.querySelectorAll(".nav").forEach(b=>b.onclick=()=>{document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));$(b.dataset.page).classList.add("active");document.querySelectorAll(".nav").forEach(n=>n.classList.remove("active"));b.classList.add("active")});
+document.querySelector(".plus").onclick=()=>{document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));$("add").classList.add("active");document.querySelectorAll(".nav").forEach(n=>n.classList.remove("active"))};
+function renderNum(){$("display").textContent=money(Number(value||0))}
+function inputDigit(d){if(fresh){value=d==="00"?"0":d;fresh=false}else if(!(d==="00"&&value==="0")){if(value==="0"&&d!==".")value=d;else if(d==="."&&!value.includes("."))value+=".";else if(d!==".")value+=d}renderNum()}
+function calc(){if(stored===null||!operator)return;let b=Number(value);value=String(operator==="+"?stored+b:stored-b);stored=null;operator=null;fresh=true;renderNum()}
+document.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{let k=b.dataset.k;if(/^\d+$/.test(k))inputDigit(k);else if(k==="dot")inputDigit(".");else if(k==="del"){value=value.length>1?value.slice(0,-1):"0";renderNum()}else{if(stored!==null&&!fresh)calc();stored=Number(value);operator=k==="plus"?"+":"-";fresh=true}});
+$("expenseBtn").onclick=()=>{type="expense";$("expenseBtn").classList.add("on");$("incomeBtn").classList.remove("on")};$("incomeBtn").onclick=()=>{type="income";$("incomeBtn").classList.add("on");$("expenseBtn").classList.remove("on")};
+$("save").onclick=()=>{if(stored!==null)calc();let n=Number(value);if(!Number.isFinite(n)||n<=0){$("msg").textContent="請先輸入金額";return}state.entries.push({id:Date.now(),type,amount:n,cat:document.querySelector(".cat.sel").dataset.cat,account:document.querySelector("[data-account].sel").dataset.account,note:$("note").value.trim(),date:new Date().toISOString()});saveState();$("note").value="";value="0";fresh=true;renderNum();$("msg").textContent="✓ 已記帳";renderAll();setTimeout(()=>$("msg").textContent="",1800)};
 document.querySelectorAll("[data-account]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-account]").forEach(x=>x.classList.remove("sel"));b.classList.add("sel")});
-$("expenseBtn").onclick=()=>{type="expense";$("expenseBtn").classList.add("on");$("incomeBtn").classList.remove("on")};
-$("incomeBtn").onclick=()=>{type="income";$("incomeBtn").classList.add("on");$("expenseBtn").classList.remove("on")};
-$("save").onclick=()=>{if(stored!==null)calc();let n=Number(value);if(!Number.isFinite(n)||n<=0){$("msg").textContent="請先輸入金額";return}let e={id:Date.now(),type,amount:n,cat:document.querySelector(".cat.sel").dataset.cat,account:document.querySelector("[data-account].sel").dataset.account,note:$("note").value.trim(),date:new Date().toISOString()};entries.unshift(e);localStorage.setItem(KEY,JSON.stringify(entries));$("saved").textContent="✓ 已記帳 "+(type==="expense"?"支出":"收入")+" $"+n.toLocaleString();$("saved").style.display="block";$("note").value="";value="0";fresh=true;renderHistory();render();setTimeout(()=>$("saved").style.display="none",2200)};
-function renderHistory(){let h=$("history");h.innerHTML=entries.slice(0,8).map(e=>`<div class="entry"><div><b>${e.cat}</b><small>${e.account}${e.note?" · "+e.note:""}</small></div><b style="color:${e.type==="expense"?"var(--red)":"var(--green)"}">${e.type==="expense"?"-":"+"}$${e.amount.toLocaleString()}</b></div>`).join("")||"<div style='color:var(--muted);font-size:13px'>還沒有記帳紀錄</div>"}
-$("today").textContent=new Intl.DateTimeFormat("zh-TW",{year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());render();renderHistory();
+document.querySelectorAll("[data-if]").forEach(b=>b.onclick=()=>{incomeFilter=b.dataset.if;document.querySelectorAll("[data-if]").forEach(x=>x.classList.remove("sel"));b.classList.add("sel");renderIncome()});
+$("addCat").onclick=()=>{$("modal").style.display="flex"};$("close").onclick=()=>{$("modal").style.display="none"};$("catForm").onsubmit=e=>{e.preventDefault();let n=$("catName").value.trim(),em=$("catEmoji").value.trim()||"•";if(!n||state.cats.some(c=>c[1]===n))return alert("類別名稱已存在或無效");state.cats.push([em,n]);saveState();$("catName").value="";$("catEmoji").value="";$("modal").style.display="none";renderAll()};
+$("date").textContent=new Intl.DateTimeFormat("zh-TW",{year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());renderAll();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
-</script>
-</body></html>
+</script></body></html>
