@@ -174,23 +174,10 @@ async function openAuth(){
   if(cloudUser){
     // 先把雲端視窗畫出來；任何帳簿/RLS錯誤都不能阻止使用者操作登入狀態。
     cloudProfile=cloudProfile||{display_name:""};
-    modal.innerHTML=`<div class="modal"><div class="sheet authbox"><button type="button" class="close" onclick="closeModal()">×</button><h2>☁️ 米杯雲端</h2><div id="cloudStatus" class="cloud-status">登入帳號：${esc(cloudUser.email||"")}<br>目前帳簿：<b>載入中…</b></div><div class="field"><label>我的顯示名稱</label><input id="displayName" maxlength="30" value="${esc(cloudProfile.display_name||"")}" placeholder="例如：小邱"><div class="small">共享帳簿中，其他成員會看到這個名稱；私人帳簿不會與別人共享。</div></div><button class="primary" style="width:100%;margin-top:10px;min-height:52px;border-radius:14px;font-weight:800" onclick="saveCloudProfile().catch(e=>alert('儲存失敗：'+(e.message||e)))">儲存名稱</button><div id="bookListWrap" class="book-section"><div class="book-section-title">📚 我的帳簿</div><div class="empty">載入中…</div></div><div class="book-actions"><button class="pill" onclick="createSharedBook().catch(e=>alert('建立失敗：'+(e.message||e)))">＋ 建立共享帳簿</button><button class="pill" onclick="joinSharedBook().catch(e=>alert('加入失敗：'+(e.message||e)))">🔗 加入共享帳簿</button></div><button class="primary" style="width:100%;margin-top:8px" onclick="syncCloud(false).catch(e=>alert('同步失敗：'+(e.message||e)))">☁️ 立即同步目前帳簿</button><button class="modalCancel" style="width:100%;margin-top:8px" onclick="signOutCloud()">登出</button><button type="button" class="modalCancel" style="width:100%;margin-top:8px" onclick="closeModal()">取消</button></div></div>`;
-    // 非同步載入，不阻塞視窗開啟。
-    (async()=>{
-      try{await loadCloudProfile();}catch(e){console.error("載入顯示名稱失敗",e);}
-      try{await ensureCloudBook();}catch(e){console.error("載入帳簿失敗",e);}
-      const status=document.getElementById("cloudStatus");
-      const b=activeBook();
-      if(status)status.innerHTML=`登入帳號：${esc(cloudUser.email||"")}<br>目前帳簿：<b>${esc(bookLabel(b))}</b>${b?`（${b.book_type==='shared'?'共享':'私人'}）`:"（尚未載入）"}`;
-      const wrap=document.getElementById("bookListWrap");
-      if(wrap)wrap.innerHTML=`<div class="book-section-title">📚 我的帳簿</div>${renderBookList()}`;
-      const input=document.getElementById("displayName");if(input)input.value=cloudProfile.display_name||"";
-    })();
-    return;
-  }
-  modal.innerHTML=`<div class="modal"><div class="sheet authbox"><button type="button" class="close" onclick="closeModal()">×</button><h2>☁️ 米杯雲端</h2><div class="small">登入後可以把目前帳本備份到雲端，並管理私人／共享帳簿。</div><input id="authEmail" type="email" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Email"><input id="authPass" type="password" autocomplete="off" placeholder="密碼（至少 6 碼）"><div class="auth-actions"><button class="primary" onclick="haptic(this);signInCloud().catch(e=>alert('登入失敗：'+(e.message||e)))">登入</button><button class="pill" onclick="haptic(this);signUpCloud().catch(e=>alert('註冊失敗：'+(e.message||e)))">註冊</button></div><div class="auth-version">米杯記帳 V29 測試版</div><button class="modalCancel" style="width:100%;margin-top:10px" onclick="closeModal()">取消</button></div></div>`;
-  // 每次重新開啟登入視窗都保持空白，避免瀏覽器沿用上一個帳號。
-  setTimeout(()=>{const e=document.getElementById("authEmail"),p=document.getElementById("authPass");if(e)e.value="";if(p)p.value="";},80);
+    modal.innerHTML=`<div class="modal"><div class="sheet authbox"><button type="button" class="close" onclick="closeModal()">×</button><h2>☁️ 米杯雲端</h2><div class="small">登入後可以把目前帳本備份到雲端，並管理私人／共享帳簿。</div><input id="fakeUser" type="text" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0"><input id="fakePass" type="password" autocomplete="current-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0"><input id="authEmail" type="email" autocomplete="new-password" autocapitalize="none" spellcheck="false" placeholder="Email"><input id="authPass" type="password" autocomplete="new-password" placeholder="密碼（至少 6 碼）"><div class="auth-actions"><button class="primary" onclick="haptic(this);signInCloud().catch(e=>alert('登入失敗：'+(e.message||e)))">登入</button><button class="pill" onclick="haptic(this);signUpCloud().catch(e=>alert('註冊失敗：'+(e.message||e)))">註冊</button></div><div class="auth-version">米杯記帳 V30 測試版</div><button class="modalCancel" style="width:100%;margin-top:10px" onclick="closeModal()">取消</button></div></div>`;
+  const clearAuthFields=()=>{const e=document.getElementById("authEmail"),p=document.getElementById("authPass");if(e){e.value="";e.removeAttribute("value");}if(p){p.value="";p.removeAttribute("value");}};
+  clearAuthFields();
+  [50,200,500,1000].forEach(ms=>setTimeout(clearAuthFields,ms));
 }
 
 async function signInCloud(){
