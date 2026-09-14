@@ -1,1 +1,24 @@
-{"name":"米杯記帳","short_name":"米杯記帳","start_url":"./","display":"standalone","background_color":"#f7f1e7","theme_color":"#f7f1e7","lang":"zh-Hant","icons":[]}
+{
+  "name": "米杯記帳",
+  "short_name": "米杯記帳",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6efe6",
+  "theme_color": "#f6efe6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
