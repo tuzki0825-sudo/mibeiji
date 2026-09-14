@@ -1,10 +1,1 @@
-{
-  "name": "米白記帳",
-  "short_name": "米白記帳",
-  "start_url": "./",
-  "display": "standalone",
-  "background_color": "#f6f1e8",
-  "theme_color": "#f6f1e8",
-  "lang": "zh-Hant",
-  "icons": []
-}
+{"name":"米杯記帳","short_name":"米杯記帳","start_url":"./","display":"standalone","background_color":"#f7f1e7","theme_color":"#f7f1e7","lang":"zh-Hant","icons":[]}
