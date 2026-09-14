@@ -25,17 +25,41 @@
 .authbox h2{margin-top:0}
 .authbox input{width:100%;padding:13px;border:1px solid var(--line);border-radius:12px;background:#fffaf2;color:var(--ink);margin:6px 0}
 .auth-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.auth-actions button{width:100%;min-height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;white-space:nowrap;line-height:1.2;font-size:17px;font-weight:800;padding:0 12px}
+.auth-actions .primary{background:var(--accent);color:#fff}
+.auth-actions .pill{background:#eadfd2;color:var(--ink);padding:0 12px}
+#authPill{display:inline-flex;align-items:center;justify-content:center;min-height:40px;white-space:nowrap;line-height:1;user-select:none;-webkit-user-select:none}
+.haptic-press{transition:transform .08s ease,filter .08s ease}
+.haptic-press.is-pressed{transform:scale(.96);filter:brightness(.96)}
+
 .cloud-status{background:#efe6db;border-radius:12px;padding:10px;font-size:13px;margin:10px 0}
-</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body><div class="app"><header><div><h1>米杯記帳</h1><div class="sub" id="dateText"></div></div><span class="pill" id="authPill" onclick="openAuth()">☁️ 登入</span></header><main id="root"></main>
+</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body><div class="app"><header><div><h1>米杯記帳</h1><div class="sub" id="dateText"></div></div><span class="pill haptic-press" id="authPill" onclick="haptic(this);openAuth()">☁️ 登入</span></header><main id="root"></main>
 <nav class="nav"><button data-page="home">🏠<span class="ico"></span>首頁</button><button data-page="stats">📊<span class="ico"></span>統計</button><button class="plus" onclick="openAdd()">＋</button><button data-page="budget">🎯<span class="ico"></span>預算</button><button data-page="accounts">🏦<span class="ico"></span>帳戶</button></nav></div><div id="modal"></div>
 <script>
 
-/* V19 Cloud Sync */
+/* V20 Cloud Sync */
 const SUPABASE_URL="https://zejlyvatmdcsgytticyn.supabase.co";
 const SUPABASE_KEY="sb_publishable_UyN0WE_S8lxaQjuQ-px7Hg_tA1TcCY1";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let cloudUser=null, cloudBookId=null, cloudBusy=false;
+const hapticObserver=new MutationObserver(()=>{
+  document.querySelectorAll("#modal button,.nav button,#authPill").forEach(wireHaptic);
+});
+hapticObserver.observe(document.getElementById("modal"),{childList:true,subtree:true});
 
+
+function haptic(el){
+  if(navigator.vibrate) navigator.vibrate(10);
+  if(el){
+    el.classList.add("is-pressed");
+    setTimeout(()=>el.classList.remove("is-pressed"),110);
+  }
+}
+function wireHaptic(el){
+  if(!el || el.dataset.haptic==="1") return;
+  el.dataset.haptic="1";
+  el.addEventListener("pointerdown",()=>haptic(el),{passive:true});
+}
 async function refreshAuth(){
   const {data}=await sb.auth.getUser();
   cloudUser=data?.user||null;
@@ -63,8 +87,8 @@ async function openAuth(){
     <input id="authEmail" type="email" autocomplete="email" placeholder="Email">
     <input id="authPass" type="password" autocomplete="current-password" placeholder="密碼（至少 6 碼）">
     <div class="auth-actions">
-      <button class="primary" onclick="signInCloud()">登入</button>
-      <button class="pill" onclick="signUpCloud()">註冊</button>
+      <button class="primary" onclick="haptic(this);signInCloud()">登入</button>
+      <button class="pill" onclick="haptic(this);signUpCloud()">註冊</button>
     </div>
     <button class="modalCancel" style="width:100%;margin-top:10px" onclick="closeModal()">取消</button>
   </div></div>`;
