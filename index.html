@@ -164,7 +164,7 @@ async function signInCloud(){
  }catch(e){alert("登入失敗："+(e?.message||e));}
  finally{buttons.forEach(b=>b.disabled=false);}
 }
-async function signOutCloud(){{stopCloudAutoSync();await sb.auth.signOut();cloudUser=null;cloudBooks=[];cloudBookId=null;cloudDirty=false;closeModal();await refreshAuth()}
+async function signOutCloud(){stopCloudAutoSync();await sb.auth.signOut();cloudUser=null;cloudBooks=[];cloudBookId=null;cloudDirty=false;closeModal();await refreshAuth()}
 function startCloudAutoSync(){if(cloudAutoTimer)clearInterval(cloudAutoTimer);if(!cloudUser)return;syncCloud(true);cloudAutoTimer=setInterval(()=>syncCloud(true),60000);window.removeEventListener("focus",autoCloudCheck);window.addEventListener("focus",autoCloudCheck);window.removeEventListener("online",autoCloudCheck);window.addEventListener("online",autoCloudCheck);}
 function stopCloudAutoSync(){if(cloudAutoTimer)clearInterval(cloudAutoTimer);cloudAutoTimer=null;window.removeEventListener("focus",autoCloudCheck);window.removeEventListener("online",autoCloudCheck)}
 function autoCloudCheck(){if(cloudUser)syncCloud(true)}
