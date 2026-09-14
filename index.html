@@ -126,21 +126,24 @@ async function getSnapshot(bookId=cloudBookId){
 async function uploadSnapshot(bookId=cloudBookId, stateToUpload=state){
  if(!cloudUser)return;if(!bookId)await ensureCloudBook();
  const updatedAt=new Date().toISOString();
- const payload={...stateToUpload,_mibeiji_version:38,_mibeiji_book_id:bookId};
+ const payload={...stateToUpload,_mibeiji_version:39,_mibeiji_book_id:bookId};
  const {data,error}=await sb.rpc("save_book_snapshot",{p_book_id:bookId,p_payload:payload,p_updated_at:updatedAt});
  if(error)throw error; const row=Array.isArray(data)?data[0]:data;
  cloudLastUpdatedAt=row?.updated_at||updatedAt;localStorage.setItem("mibeiji_cloud_updated_at",cloudLastUpdatedAt);cloudDirty=false;
 }
-async function syncBook(bookId=cloudBookId,fromLogin=false,silent=false){
+async function syncBook(bookId=cloudBookId,fromLogin=false,silent=false,forceRemote=false){
  if(cloudBusy||!cloudUser||!bookId)return;cloudBusy=true;
  try{const snap=await getSnapshot(bookId);if(!snap){await uploadSnapshot(bookId,state);if(!silent)alert("☁️ 這本帳簿的雲端資料是空的，已把目前資料上傳。");return}
   const remoteAt=snap.updated_at||"";
   if(fromLogin){state=normalizeState(snap.payload);localStorage.setItem(KEY,JSON.stringify(state));cloudLastUpdatedAt=remoteAt;localStorage.setItem("mibeiji_cloud_updated_at",remoteAt);cloudDirty=false;render();if(!silent)alert("☁️ 已載入「"+bookLabel(activeBook())+"」");return}
-  if(cloudDirty){await uploadSnapshot(bookId,state)}
+  if(cloudDirty){await uploadSnapshot(bookId,state);
+    if(forceRemote){const fresh=await getSnapshot(bookId);const fr=fresh?.updated_at||"";if(fresh){state=normalizeState(fresh.payload);localStorage.setItem(KEY,JSON.stringify(state));cloudLastUpdatedAt=fr;localStorage.setItem("mibeiji_cloud_updated_at",fr);render();}}
+  }
+  else if(forceRemote){state=normalizeState(snap.payload);localStorage.setItem(KEY,JSON.stringify(state));cloudLastUpdatedAt=remoteAt;localStorage.setItem("mibeiji_cloud_updated_at",remoteAt);render()}
   else if(remoteAt&&(!cloudLastUpdatedAt||new Date(remoteAt)>new Date(cloudLastUpdatedAt))){state=normalizeState(snap.payload);localStorage.setItem(KEY,JSON.stringify(state));cloudLastUpdatedAt=remoteAt;localStorage.setItem("mibeiji_cloud_updated_at",remoteAt);render()}
   else if(!cloudLastUpdatedAt){cloudLastUpdatedAt=remoteAt;localStorage.setItem("mibeiji_cloud_updated_at",remoteAt)}
  }catch(e){console.error("雲端同步失敗",e);if(!silent)alert("同步失敗："+(e.message||e))}finally{cloudBusy=false}}
-async function syncCloud(silent=false){await ensureCloudBook();await syncBook(cloudBookId,false,silent)}
+async function syncCloud(silent=false,forceRemote=false){await ensureCloudBook();await syncBook(cloudBookId,false,silent,forceRemote)}
 async function switchCloudBook(id){
  if(id===cloudBookId)return;
  if(!cloudUser)return;
@@ -263,9 +266,9 @@ async function signUpCloud(){
   }
 }
 
-function startCloudAutoSync(){if(cloudAutoTimer)clearInterval(cloudAutoTimer);if(!cloudUser)return;syncCloud(true).catch(e=>console.error("自動同步失敗",e));cloudAutoTimer=setInterval(()=>syncCloud(true).catch(e=>console.error("自動同步失敗",e)),60000);window.removeEventListener("focus",autoCloudCheck);window.addEventListener("focus",autoCloudCheck);window.removeEventListener("online",autoCloudCheck);window.addEventListener("online",autoCloudCheck);}
+function startCloudAutoSync(){if(cloudAutoTimer)clearInterval(cloudAutoTimer);if(!cloudUser)return;syncCloud(true).catch(e=>console.error("自動同步失敗",e));cloudAutoTimer=setInterval(()=>syncCloud(true,true).catch(e=>console.error("自動同步失敗",e)),60000);window.removeEventListener("focus",autoCloudCheck);window.addEventListener("focus",autoCloudCheck);window.removeEventListener("online",autoCloudCheck);window.addEventListener("online",autoCloudCheck);}
 function stopCloudAutoSync(){if(cloudAutoTimer)clearInterval(cloudAutoTimer);cloudAutoTimer=null;window.removeEventListener("focus",autoCloudCheck);window.removeEventListener("online",autoCloudCheck)}
-function autoCloudCheck(){if(cloudUser)syncCloud(true).catch(e=>console.error("自動同步失敗",e))}
+function autoCloudCheck(){if(cloudUser)syncCloud(true,true).catch(e=>console.error("自動同步失敗",e))}
 
 function normalizeState(x){
   x=x||{};
@@ -504,6 +507,8 @@ function addAccount(){let n=prompt("帳戶名稱");if(!n)return;let i=Number(pro
 function bind(){document.querySelectorAll(".nav button[data-page]").forEach(b=>b.onclick=()=>{page=b.dataset.page;render()})}
 window.addEventListener("online",()=>{if(cloudUser)syncCloud(false,true)});
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&cloudUser)syncCloud(false,true)});
+window.addEventListener("pageshow",()=>{if(cloudUser)syncCloud(true,true).catch(e=>console.error("頁面重新顯示同步失敗",e))});
+window.addEventListener("load",()=>{if(cloudUser)syncCloud(true,true).catch(e=>console.error("開啟後同步失敗",e))});
 render();
 refreshAuth().then(()=>{if(cloudUser)startCloudAutoSync()});
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
