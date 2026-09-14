@@ -1,4 +1,4 @@
-const CACHE="mibeiji-v26";
+const CACHE="mibeiji-v27";
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(["./","./index.html","./manifest.json"]))).then(()=>self.skipWaiting()));
 self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(xs=>Promise.all(xs.filter(x=>x!==CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));
 self.addEventListener("fetch",e=>{
