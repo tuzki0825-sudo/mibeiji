@@ -54,7 +54,7 @@
 const SUPABASE_URL="https://zejlyvatmdcsgytticyn.supabase.co";
 const SUPABASE_KEY="sb_publishable_UyN0WE_S8lxaQjuQ-px7Hg_tA1TcCY1";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let cloudUser=null, cloudBookId=null, cloudBusy=false;
+let cloudUser=null, cloudBookId=null, cloudBusy=false, cloudProfile={display_name:""};
 const hapticObserver=new MutationObserver(()=>{
   document.querySelectorAll("#modal button,.nav button,#authPill").forEach(wireHaptic);
 });
@@ -73,11 +73,31 @@ function wireHaptic(el){
   el.dataset.haptic="1";
   el.addEventListener("pointerdown",()=>haptic(el),{passive:true});
 }
+async function loadCloudProfile(){
+  cloudProfile={display_name:""};
+  if(!cloudUser)return cloudProfile;
+  const {data,error}=await sb.from("profiles").select("display_name").eq("id",cloudUser.id).maybeSingle();
+  if(!error && data) cloudProfile=data;
+  return cloudProfile;
+}
+async function saveCloudProfile(){
+  if(!cloudUser)return;
+  const name=(document.getElementById("displayName")?.value||"").trim().slice(0,30);
+  const {error}=await sb.from("profiles").upsert({id:cloudUser.id,display_name:name},{onConflict:"id"});
+  if(error)throw error;
+  cloudProfile={display_name:name};
+  await refreshAuth();
+  alert("已更新顯示名稱");
+}
+function cloudDisplayName(){
+  return (cloudProfile.display_name||cloudUser?.email?.split("@")[0]||"使用者").trim();
+}
 async function refreshAuth(){
   const {data}=await sb.auth.getUser();
   cloudUser=data?.user||null;
+  if(cloudUser) await loadCloudProfile(); else cloudProfile={display_name:""};
   const pill=document.getElementById("authPill");
-  if(pill) pill.textContent=cloudUser ? "☁️ 已登入" : "☁️ 登入";
+  if(pill) pill.textContent=cloudUser ? "☁️ "+cloudDisplayName() : "☁️ 登入";
 }
 async function openAuth(){
   const {data}=await sb.auth.getUser(); cloudUser=data?.user||null;
@@ -86,7 +106,10 @@ async function openAuth(){
     modal.innerHTML=`<div class="modal"><div class="sheet authbox">
       <button type="button" class="close" onclick="closeModal()">×</button>
       <h2>☁️ 米杯雲端</h2>
-      <div class="cloud-status">目前登入：${esc(cloudUser.email||"")}</div>
+      <div class="cloud-status">登入帳號：${esc(cloudUser.email||"")}</div>
+      <div class="field"><label>共享帳簿顯示名稱</label><input id="displayName" maxlength="30" value="${esc(cloudProfile.display_name||"")}" placeholder="例如：小明"></div>
+      <div class="small">之後共享帳簿時，其他成員會看到這個名稱；未設定時會使用 Email 前綴。</div>
+      <button class="primary" style="width:100%;margin-top:10px;min-height:52px;border-radius:14px;font-weight:800" onclick="saveCloudProfile().catch(e=>alert('儲存失敗：'+(e.message||e)))">儲存名稱</button>
       <button class="primary" style="width:100%;margin-top:8px" onclick="syncCloud()">☁️ 同步我的帳簿</button>
       <button class="modalCancel" style="width:100%;margin-top:8px" onclick="signOutCloud()">登出</button>
       <button type="button" class="modalCancel" style="width:100%;margin-top:8px" onclick="closeModal()">取消</button>
@@ -102,7 +125,7 @@ async function openAuth(){
     <div class="auth-actions">
       <button class="primary" onclick="haptic(this);signInCloud()">登入</button>
       <button class="pill" onclick="haptic(this);signUpCloud()">註冊</button>
-    </div><div class="auth-version">米杯記帳 V22 測試版</div>
+    </div><div class="auth-version">米杯記帳 V23 測試版</div>
     <button class="modalCancel" style="width:100%;margin-top:10px" onclick="closeModal()">取消</button>
   </div></div>`;
 }
@@ -123,7 +146,7 @@ async function signInCloud(){
   if(!email||!pass)return alert("請輸入 Email 與密碼");
   const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
   if(error)return alert(error.message);
-  cloudUser=data.user; await ensureCloudBook(); await syncCloud(true); closeModal(); await refreshAuth();
+  cloudUser=data.user; await loadCloudProfile(); await ensureCloudBook(); await syncCloud(true); closeModal(); await refreshAuth();
 }
 async function signOutCloud(){
   await sb.auth.signOut(); cloudUser=null; cloudBookId=null; closeModal(); await refreshAuth();
