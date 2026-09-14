@@ -1,4 +1,4 @@
-const CACHE='mibeiji-v39';
+const CACHE='mibeiji-v41';
 const ASSETS=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));
