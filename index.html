@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f1e8">
+<link rel="manifest" href="manifest.json">
+<title>米白記帳</title>
+<style>
+:root{--bg:#f6f1e8;--card:#fffdf8;--soft:#f0e9dd;--text:#403a32;--muted:#91877a;--green:#73866d;--green-soft:#e1e8dc;--red:#c47d68;--line:#e5dccf}
+*{box-sizing:border-box}body{margin:0;background:#e9e1d5;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif}
+.app{width:min(430px,100%);min-height:100vh;margin:auto;background:var(--bg);padding-bottom:30px}
+header{padding:24px 20px 12px;display:flex;justify-content:space-between}.title{font-size:21px;font-weight:800}.date{font-size:12px;color:var(--muted);margin-top:4px}
+main{padding:0 18px}.type{display:grid;grid-template-columns:1fr 1fr;background:var(--soft);border-radius:15px;padding:4px;margin:8px 0 12px}.type button{border:0;background:transparent;padding:11px;border-radius:12px;color:var(--muted);font-weight:700}.type .on{background:var(--card);color:var(--text)}
+.amount{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;text-align:right;margin-bottom:12px}.amount small{display:block;text-align:left;color:var(--muted)}.amount strong{font-size:42px;display:block;margin-top:5px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:15px}.label{font-size:12px;color:var(--muted);margin:0 0 9px}.cats{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:15px}.cat,.account button{border:1px solid var(--line);background:#faf5ec;border-radius:14px;padding:10px 3px;font-size:11px;color:var(--text);min-height:55px}.cat.sel,.account .sel{background:var(--green-soft);border-color:var(--green);font-weight:800}.account{display:flex;gap:8px;overflow:auto}.account button{min-height:44px;padding:9px 13px;white-space:nowrap}
+.keypad{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:14px}.key{border:1px solid var(--line);background:var(--card);border-radius:17px;min-height:58px;font-size:22px;font-weight:750;color:var(--text)}.key.op{color:var(--green)}.key.del{color:var(--red)}.key.ok{background:var(--green);color:white;border-color:var(--green)}
+.note{width:100%;border:1px solid var(--line);background:#faf5ec;border-radius:14px;padding:12px;margin-top:14px;font-size:14px;outline:none;color:var(--text)}.msg{min-height:20px;color:var(--red);font-size:12px;margin-top:6px}.saved{background:var(--green-soft);color:#52614d;padding:10px 12px;border-radius:13px;font-size:13px;margin-top:10px;display:none}
+.history{margin-top:18px}.history h3{font-size:16px}.entry{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin:7px 0;display:flex;justify-content:space-between}.entry small{display:block;color:var(--muted);margin-top:3px}
+@media(max-width:340px){.cats{grid-template-columns:repeat(3,1fr)}.key{min-height:54px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div><div class="title">米白記帳</div><div class="date" id="today"></div></div><div>🧾</div></header>
+<main>
+<div class="type"><button class="on" id="expenseBtn">支出</button><button id="incomeBtn">收入</button></div>
+<div class="amount"><small>金額</small><strong id="display">$0</strong></div>
+<div class="panel">
+<p class="label">分類</p><div class="cats">
+<button class="cat sel" data-cat="吃飯">🍚<br>吃飯</button><button class="cat" data-cat="房租">🏠<br>房租</button><button class="cat" data-cat="交通">🚗<br>交通</button><button class="cat" data-cat="娛樂">🎮<br>娛樂</button><button class="cat" data-cat="固定支出">📌<br>固定支出</button>
+</div>
+<p class="label">付款帳戶</p><div class="account"><button class="sel" data-account="現金">💵 現金</button><button data-account="銀行">🏦 銀行</button><button data-account="信用卡">💳 信用卡</button></div>
+</div>
+<div class="keypad">
+<button class="key" data-key="7">7</button><button class="key" data-key="8">8</button><button class="key" data-key="9">9</button><button class="key del" data-key="del">⌫</button>
+<button class="key" data-key="4">4</button><button class="key" data-key="5">5</button><button class="key" data-key="6">6</button><button class="key op" data-key="plus">＋</button>
+<button class="key" data-key="1">1</button><button class="key" data-key="2">2</button><button class="key" data-key="3">3</button><button class="key op" data-key="minus">－</button>
+<button class="key" data-key="00">00</button><button class="key" data-key="0">0</button><button class="key" data-key="dot">.</button><button class="key ok" id="save">✓</button>
+</div>
+<input class="note" id="note" placeholder="備註（選填）"><div class="msg" id="msg"></div><div class="saved" id="saved"></div>
+<section class="history"><h3>最近紀錄</h3><div id="history"></div></section>
+</main></div>
+<script>
+const KEY="mibeiji_entries_v1";let entries=JSON.parse(localStorage.getItem(KEY)||"[]"),value="0",stored=null,operator=null,fresh=true,type="expense";
+const $=id=>document.getElementById(id);function render(){ $("display").textContent="$"+Number(value||0).toLocaleString("en-US",{maximumFractionDigits:2});}
+function inputDigit(d){if(fresh){value=d==="00"?"0":d;fresh=false}else if(!(d==="00"&&value==="0")){if(value==="0"&&d!==".")value=d;else if(d==="."&&!value.includes("."))value+=".";else if(d!==".")value+=d}render()}
+function calc(){if(stored===null||!operator)return Number(value);let b=Number(value),r=operator==="+"?stored+b:stored-b;value=String(r);stored=null;operator=null;fresh=true;render();return r}
+document.querySelectorAll("[data-key]").forEach(b=>b.onclick=()=>{let k=b.dataset.key;if(/^\d+$/.test(k))inputDigit(k);else if(k==="dot")inputDigit(".");else if(k==="del"){value=value.length>1?value.slice(0,-1):"0";render()}else{if(stored!==null&&!fresh)calc();stored=Number(value);operator=k==="plus"?"+":"-";fresh=true}});
+document.querySelectorAll(".cat").forEach(b=>b.onclick=()=>{document.querySelectorAll(".cat").forEach(x=>x.classList.remove("sel"));b.classList.add("sel")});
+document.querySelectorAll("[data-account]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-account]").forEach(x=>x.classList.remove("sel"));b.classList.add("sel")});
+$("expenseBtn").onclick=()=>{type="expense";$("expenseBtn").classList.add("on");$("incomeBtn").classList.remove("on")};
+$("incomeBtn").onclick=()=>{type="income";$("incomeBtn").classList.add("on");$("expenseBtn").classList.remove("on")};
+$("save").onclick=()=>{if(stored!==null)calc();let n=Number(value);if(!Number.isFinite(n)||n<=0){$("msg").textContent="請先輸入金額";return}let e={id:Date.now(),type,amount:n,cat:document.querySelector(".cat.sel").dataset.cat,account:document.querySelector("[data-account].sel").dataset.account,note:$("note").value.trim(),date:new Date().toISOString()};entries.unshift(e);localStorage.setItem(KEY,JSON.stringify(entries));$("saved").textContent="✓ 已記帳 "+(type==="expense"?"支出":"收入")+" $"+n.toLocaleString();$("saved").style.display="block";$("note").value="";value="0";fresh=true;renderHistory();render();setTimeout(()=>$("saved").style.display="none",2200)};
+function renderHistory(){let h=$("history");h.innerHTML=entries.slice(0,8).map(e=>`<div class="entry"><div><b>${e.cat}</b><small>${e.account}${e.note?" · "+e.note:""}</small></div><b style="color:${e.type==="expense"?"var(--red)":"var(--green)"}">${e.type==="expense"?"-":"+"}$${e.amount.toLocaleString()}</b></div>`).join("")||"<div style='color:var(--muted);font-size:13px'>還沒有記帳紀錄</div>"}
+$("today").textContent=new Intl.DateTimeFormat("zh-TW",{year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());render();renderHistory();
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body></html>

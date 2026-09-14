@@ -1,0 +1,10 @@
+{
+  "name": "米白記帳",
+  "short_name": "米白記帳",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f6f1e8",
+  "theme_color": "#f6f1e8",
+  "lang": "zh-Hant",
+  "icons": []
+}
