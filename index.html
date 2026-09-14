@@ -63,6 +63,23 @@ function haptic(el){if(navigator.vibrate)navigator.vibrate(10);if(el){el.classLi
 function wireHaptic(el){if(!el||el.dataset.haptic==="1")return;el.dataset.haptic="1";el.addEventListener("pointerdown",()=>haptic(el),{passive:true})}
 async function loadCloudProfile(){cloudProfile={display_name:""};if(!cloudUser)return cloudProfile;const {data,error}=await sb.from("profiles").select("display_name").eq("id",cloudUser.id).maybeSingle();if(error)throw error;if(data)cloudProfile=data;else{const {data:p,error:pe}=await sb.from("profiles").upsert({id:cloudUser.id,display_name:""},{onConflict:"id"}).select("display_name").single();if(pe)throw pe;cloudProfile=p||{display_name:""};}return cloudProfile}
 async function saveCloudProfile(){if(!cloudUser)return;const name=(document.getElementById("displayName")?.value||"").trim().slice(0,30);const {error}=await sb.from("profiles").upsert({id:cloudUser.id,display_name:name},{onConflict:"id"});if(error)throw error;cloudProfile={display_name:name};await refreshAuth();openAuth();alert("已更新顯示名稱")}
+async function signOutCloud(){
+  try{
+    stopCloudAutoSync();
+    const {error}=await sb.auth.signOut();
+    if(error)throw error;
+    cloudUser=null; cloudProfile={display_name:""}; cloudBooks=[]; cloudBookId=null; cloudDirty=false; cloudLastUpdatedAt="";
+    localStorage.removeItem("mibeiji_active_book_id");
+    localStorage.removeItem("mibeiji_cloud_updated_at");
+    const pill=document.getElementById("authPill");
+    if(pill)pill.textContent="☁️ 登入";
+    closeModal();
+    alert("已登出雲端帳號");
+  }catch(e){
+    console.error("登出失敗",e);
+    alert("登出失敗："+(e.message||e));
+  }
+}
 function cloudDisplayName(){return(cloudProfile.display_name||cloudUser?.email?.split("@")[0]||"使用者").trim()}
 function activeBook(){return cloudBooks.find(b=>b.id===cloudBookId)||null}
 function bookLabel(b){return b?.name||"我的帳簿"}
@@ -95,7 +112,7 @@ async function getSnapshot(bookId=cloudBookId){if(!bookId)await ensureCloudBook(
 async function uploadSnapshot(bookId=cloudBookId, stateToUpload=state){
  if(!cloudUser)return;if(!bookId)await ensureCloudBook();
  const updatedAt=new Date().toISOString();
- const payload={...stateToUpload,_mibeiji_version:25,_mibeiji_book_id:bookId};
+ const payload={...stateToUpload,_mibeiji_version:28,_mibeiji_book_id:bookId};
  const {data,error}=await sb.from("book_snapshots").upsert({book_id:bookId,payload,updated_by:cloudUser.id,updated_at:updatedAt},{onConflict:"book_id"}).select("updated_at").single();
  if(error)throw error;cloudLastUpdatedAt=data?.updated_at||updatedAt;localStorage.setItem("mibeiji_cloud_updated_at",cloudLastUpdatedAt);cloudDirty=false;
 }
@@ -171,7 +188,7 @@ async function openAuth(){
     })();
     return;
   }
-  modal.innerHTML=`<div class="modal"><div class="sheet authbox"><button type="button" class="close" onclick="closeModal()">×</button><h2>☁️ 米杯雲端</h2><div class="small">登入後可以把目前帳本備份到雲端，並管理私人／共享帳簿。</div><input id="authEmail" type="email" autocomplete="email" placeholder="Email"><input id="authPass" type="password" autocomplete="current-password" placeholder="密碼（至少 6 碼）"><div class="auth-actions"><button class="primary" onclick="haptic(this);signInCloud().catch(e=>alert('登入失敗：'+(e.message||e)))">登入</button><button class="pill" onclick="haptic(this);signUpCloud().catch(e=>alert('註冊失敗：'+(e.message||e)))">註冊</button></div><div class="auth-version">米杯記帳 V27 測試版</div><button class="modalCancel" style="width:100%;margin-top:10px" onclick="closeModal()">取消</button></div></div>`;
+  modal.innerHTML=`<div class="modal"><div class="sheet authbox"><button type="button" class="close" onclick="closeModal()">×</button><h2>☁️ 米杯雲端</h2><div class="small">登入後可以把目前帳本備份到雲端，並管理私人／共享帳簿。</div><input id="authEmail" type="email" autocomplete="email" placeholder="Email"><input id="authPass" type="password" autocomplete="current-password" placeholder="密碼（至少 6 碼）"><div class="auth-actions"><button class="primary" onclick="haptic(this);signInCloud().catch(e=>alert('登入失敗：'+(e.message||e)))">登入</button><button class="pill" onclick="haptic(this);signUpCloud().catch(e=>alert('註冊失敗：'+(e.message||e)))">註冊</button></div><div class="auth-version">米杯記帳 V28 測試版</div><button class="modalCancel" style="width:100%;margin-top:10px" onclick="closeModal()">取消</button></div></div>`;
 }
 
 function startCloudAutoSync(){if(cloudAutoTimer)clearInterval(cloudAutoTimer);if(!cloudUser)return;syncCloud(true).catch(e=>console.error("自動同步失敗",e));cloudAutoTimer=setInterval(()=>syncCloud(true).catch(e=>console.error("自動同步失敗",e)),60000);window.removeEventListener("focus",autoCloudCheck);window.addEventListener("focus",autoCloudCheck);window.removeEventListener("online",autoCloudCheck);window.addEventListener("online",autoCloudCheck);}
