@@ -18,8 +18,8 @@
 .type-switch{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#eee4d7;border-radius:15px;padding:5px;margin:6px 0 12px}
 .type-switch .typebtn{width:100%;min-height:48px;border-radius:11px;background:transparent;color:var(--muted);font-weight:700;font-size:17px}
 .type-switch .typebtn.active{background:var(--accent);color:#fff;box-shadow:0 3px 8px rgba(183,123,75,.18)}
-.dashboard{overflow:hidden}.dashtitle{font-size:25px;font-weight:800;margin:3px 0 14px}.assetbox{background:#f0e4d6;border-radius:17px;padding:15px;margin-bottom:15px}.assetbox span{display:block;color:var(--muted);font-size:12px}.assetbox strong{display:block;font-size:31px;margin-top:4px}.dashbar{margin:13px 0}.dashtrack{height:10px;background:#e9dfd4;border-radius:99px;overflow:hidden;margin-top:7px}.dashfill{height:100%;background:var(--accent);border-radius:99px;min-width:2px}.dashfill.green{background:var(--green)}.dashfill.red{background:var(--red)}.record{padding:11px 0;border-bottom:1px solid var(--line)}.record:last-child{border-bottom:0}.progress{height:9px;background:#eadfd2;border-radius:99px;overflow:hidden;margin:9px 0}.bar{height:100%;background:var(--accent);border-radius:99px}.bar.over{background:var(--red)}.budgetline{padding:13px 0;border-bottom:1px solid var(--line)}.budgetline:last-child{border-bottom:0}.money{font-weight:750}.empty{text-align:center;color:var(--muted);padding:28px 10px}.modal{position:fixed;inset:0;background:rgba(60,45,35,.28);display:flex;align-items:flex-end;z-index:20}.sheet{background:var(--bg);width:100%;max-width:620px;margin:auto;border-radius:24px 24px 0 0;padding:20px;max-height:90vh;overflow:auto}.close{-webkit-appearance:none;appearance:none;position:absolute;right:16px;top:16px;z-index:50;background:#eadfd2;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--ink);cursor:pointer;touch-action:manipulation}.sheet{position:relative}
-</style></head><body><div class="app"><header><div><h1>米杯記帳</h1><div class="sub" id="dateText"></div></div><span class="pill">V12</span></header><main id="root"></main>
+.dashboard{overflow:hidden}.dashtitle{font-size:25px;font-weight:800;margin:3px 0 14px}.assetbox{background:#f0e4d6;border-radius:17px;padding:15px;margin-bottom:15px}.assetbox span{display:block;color:var(--muted);font-size:12px}.assetbox strong{display:block;font-size:31px;margin-top:4px}.dashbar{margin:13px 0}.dashtrack{height:10px;background:#e9dfd4;border-radius:99px;overflow:hidden;margin-top:7px}.dashfill{height:100%;background:var(--accent);border-radius:99px;min-width:2px}.dashfill.green{background:var(--green)}.dashfill.red{background:var(--red)}.record{padding:11px 0;border-bottom:1px solid var(--line)}.record:last-child{border-bottom:0}.progress{height:9px;background:#eadfd2;border-radius:99px;overflow:hidden;margin:9px 0}.bar{height:100%;background:var(--accent);border-radius:99px}.bar.over{background:var(--red)}.budgetline{padding:13px 0;border-bottom:1px solid var(--line)}.budgetline:last-child{border-bottom:0}.money{font-weight:750}.empty{text-align:center;color:var(--muted);padding:28px 10px}.modal{position:fixed;inset:0;background:rgba(60,45,35,.28);display:flex;align-items:flex-end;z-index:20}.sheet{background:var(--bg);width:100%;max-width:620px;margin:auto;border-radius:24px 24px 0 0;padding:20px;max-height:90vh;overflow:auto}.close{-webkit-appearance:none;appearance:none;position:absolute;right:16px;top:16px;z-index:50;background:#eadfd2;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--ink);cursor:pointer;touch-action:manipulation}.sheet{position:relative;padding-top:72px}.modal .sheet:before{content:"記一筆";position:absolute;left:20px;top:20px;font-size:22px;font-weight:800}.close{right:16px;top:14px;width:52px;height:52px;font-size:28px;font-weight:800;z-index:999}.modalCancel{width:100%;min-height:52px;margin-top:12px;border-radius:14px;background:#eadfd2;color:var(--ink);font-size:17px;font-weight:800}
+</style></head><body><div class="app"><header><div><h1>米杯記帳</h1><div class="sub" id="dateText"></div></div><span class="pill">V13</span></header><main id="root"></main>
 <nav class="nav"><button data-page="home">🏠<span class="ico"></span>首頁</button><button data-page="stats">📊<span class="ico"></span>統計</button><button class="plus" onclick="openAdd()">＋</button><button data-page="budget">🎯<span class="ico"></span>預算</button><button data-page="accounts">🏦<span class="ico"></span>帳戶</button></nav></div><div id="modal"></div>
 <script>
 const KEY="mibeiji_v5";const old=JSON.parse(localStorage.getItem("mibeiji_v4")||localStorage.getItem("mibeiji_v3")||"null");
@@ -50,13 +50,20 @@ function home(){
  <div class="card"><div class="row"><b>🕒 最近交易</b><span class="small">${k}</span></div>${records(state.entries.slice().sort((a,b)=>b.id-a.id).slice(0,5))}</div>
  </div>`
 }
+function closeModal(){const m=document.getElementById("modal"); if(m){m.innerHTML=""; m.onclick=null; m.ontouchend=null;}}
+document.addEventListener("click",function(e){if(e.target.closest("#entryClose,#entryCancel")){e.preventDefault();e.stopPropagation();closeModal();}},true);
+document.addEventListener("touchend",function(e){if(e.target.closest("#entryClose,#entryCancel")){e.preventDefault();e.stopPropagation();closeModal();}},true);
 function openAdd(){
  type="expense"; amount=""; selectedCat=state.cats[0]?.[1]||""; selectedAccount="";
- window._entryNote=""; const modal=document.getElementById("modal"); modal.innerHTML=`<div class="modal"><div class="sheet"><button type="button" class="close" id="entryClose" onclick="closeModal()" ontouchend="closeModal()">×</button><h2>記一筆</h2><div id="entryForm"></div></div></div>`;
+ window._entryNote=""; const modal=document.getElementById("modal"); modal.innerHTML=`<div class="modal" id="entryModal"><div class="sheet"><button type="button" class="close" id="entryClose" aria-label="關閉">×</button><div id="entryForm"></div><button type="button" class="modalCancel" id="entryCancel">取消／關閉</button></div></div>`;
  const modalBox=document.getElementById("modal");
- modalBox.addEventListener("click",function(e){
-   if(e.target.closest("#entryClose") || e.target===modalBox.firstElementChild) closeModal();
- });
+ modalBox.onclick=function(e){
+   if(e.target===modalBox.firstElementChild || e.target.closest("#entryClose") || e.target.closest("#entryCancel")){ e.preventDefault(); e.stopPropagation(); closeModal(); }
+ };
+ modalBox.ontouchend=function(e){
+   const t=e.target;
+   if(t===modalBox.firstElementChild || t.closest("#entryClose") || t.closest("#entryCancel")){ e.preventDefault(); e.stopPropagation(); closeModal(); }
+ };
  renderEntryForm();
 }
 function renderEntryForm(){
