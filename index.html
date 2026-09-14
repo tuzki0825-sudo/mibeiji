@@ -63,8 +63,20 @@ const hapticObserver=new MutationObserver(()=>document.querySelectorAll("#modal 
 hapticObserver.observe(document.getElementById("modal"),{childList:true,subtree:true});
 function haptic(el){if(navigator.vibrate)navigator.vibrate(10);if(el){el.classList.add("is-pressed");setTimeout(()=>el.classList.remove("is-pressed"),110)}}
 function wireHaptic(el){if(!el||el.dataset.haptic==="1")return;el.dataset.haptic="1";el.addEventListener("pointerdown",()=>haptic(el),{passive:true})}
-async function loadCloudProfile(){cloudProfile={display_name:""};if(!cloudUser)return cloudProfile;const {data,error}=await sb.from("profiles").select("display_name").eq("id",cloudUser.id).maybeSingle();if(error)throw error;if(data)cloudProfile=data;else{const {data:p,error:pe}=await sb.from("profiles").upsert({id:cloudUser.id,display_name:""},{onConflict:"id"}).select("display_name").single();if(pe)throw pe;cloudProfile=p||{display_name:""};}return cloudProfile}
-async function saveCloudProfile(){if(!cloudUser)return;const name=(document.getElementById("displayName")?.value||"").trim().slice(0,30);const {error}=await sb.from("profiles").upsert({id:cloudUser.id,display_name:name},{onConflict:"id"});if(error)throw error;cloudProfile={display_name:name};await refreshAuth();openAuth();alert("已更新顯示名稱")}
+async function loadCloudProfile(){cloudProfile={display_name:localStorage.getItem("mibeiji_display_name")||""};if(!cloudUser)return cloudProfile;const {data,error}=await sb.from("profiles").select("display_name").eq("id",cloudUser.id).maybeSingle();if(error)throw error;if(data){cloudProfile=data;localStorage.setItem("mibeiji_display_name",data.display_name||"");}else{const {data:p,error:pe}=await sb.from("profiles").upsert({id:cloudUser.id,display_name:""},{onConflict:"id"}).select("display_name").single();if(pe)throw pe;cloudProfile=p||{display_name:""};}return cloudProfile}
+async function saveCloudProfile(){
+  if(!cloudUser)return;
+  const name=(document.getElementById("displayName")?.value||"").trim().slice(0,30);
+  if(!name){alert("請輸入顯示名稱");return;}
+  const {error}=await sb.from("profiles").upsert({id:cloudUser.id,display_name:name},{onConflict:"id"});
+  if(error)throw error;
+  cloudProfile={display_name:name};
+  localStorage.setItem("mibeiji_display_name",name);
+  updateHeaderPills();
+  const status=document.getElementById("cloudStatus");
+  if(status)status.innerHTML=`登入帳號：${esc(cloudUser.email||"")}<br>目前帳簿：<b>${esc(bookLabel(activeBook()))}</b>${activeBook()?`（${activeBook().book_type==='shared'?'共享':'私人'}）`:""}`;
+  alert("✅ 顯示名稱已儲存");
+}
 async function signOutCloud(){
   try{
     stopCloudAutoSync();
@@ -114,7 +126,7 @@ async function getSnapshot(bookId=cloudBookId){
 async function uploadSnapshot(bookId=cloudBookId, stateToUpload=state){
  if(!cloudUser)return;if(!bookId)await ensureCloudBook();
  const updatedAt=new Date().toISOString();
- const payload={...stateToUpload,_mibeiji_version:37,_mibeiji_book_id:bookId};
+ const payload={...stateToUpload,_mibeiji_version:38,_mibeiji_book_id:bookId};
  const {data,error}=await sb.rpc("save_book_snapshot",{p_book_id:bookId,p_payload:payload,p_updated_at:updatedAt});
  if(error)throw error; const row=Array.isArray(data)?data[0]:data;
  cloudLastUpdatedAt=row?.updated_at||updatedAt;localStorage.setItem("mibeiji_cloud_updated_at",cloudLastUpdatedAt);cloudDirty=false;
@@ -156,7 +168,8 @@ async function leaveSharedBook(bookId){const b=cloudBooks.find(x=>x.id===bookId)
 async function shareInfoById(bookId){const b=cloudBooks.find(x=>x.id===bookId);if(!b)return alert("找不到這本帳簿");if(b.book_type!=="shared")return alert("這是私人帳簿，不需要共享邀請碼。");if(b.invite_code)return alert("❤️ "+bookLabel(b)+"\n\n共享邀請碼：\n"+b.invite_code+"\n\n把這組邀請碼給對方即可加入。");try{await loadCloudBooks();const fresh=cloudBooks.find(x=>x.id===bookId);if(fresh?.invite_code)return alert("❤️ "+bookLabel(fresh)+"\n\n共享邀請碼：\n"+fresh.invite_code+"\n\n把這組邀請碼給對方即可加入。");alert("這本共享帳簿目前沒有取得邀請碼，請確認 Supabase 的 invite_code 是否已建立。");}catch(e){alert("無法取得邀請碼："+(e.message||e));}}
 async function refreshAuth(){
   try{const {data,error}=await sb.auth.getUser();if(error)throw error;cloudUser=data?.user||null;}catch(e){console.error("取得登入狀態失敗",e);cloudUser=null;}
-  if(!cloudUser){cloudProfile={display_name:""};cloudBooks=[];cloudBookId=null;}
+  if(!cloudUser){cloudProfile={display_name:""};cloudBooks=[];cloudBookId=null;localStorage.removeItem("mibeiji_display_name");}
+  else{try{await loadCloudProfile()}catch(e){console.error("載入顯示名稱失敗",e);cloudProfile={display_name:localStorage.getItem("mibeiji_display_name")||""};}}
   updateHeaderPills();
 }
 async function openBookPicker(){
@@ -168,7 +181,7 @@ async function openBookPicker(){
 function updateHeaderPills(){
   const bookPill=document.getElementById("bookPill"),authPill=document.getElementById("authPill"),b=activeBook();
   if(bookPill){bookPill.textContent=cloudUser?(b?"📚 "+bookLabel(b):"📚 選擇帳本"):"📚 帳本";bookPill.title=cloudUser?(b?bookLabel(b):"選擇帳本"):"登入後選擇帳本";bookPill.onclick=()=>{haptic(bookPill);if(cloudUser)openBookPicker();else openAuth();};}
-  if(authPill){authPill.textContent=cloudUser?"☁️ 雲端":"☁️ 登入";authPill.title=cloudUser?"雲端帳號／管理":"登入雲端帳號";authPill.onclick=()=>{haptic(authPill);openAuth();};}
+  if(authPill){authPill.textContent=cloudUser?(cloudDisplayName()?"☁️ "+cloudDisplayName():"☁️ 雲端"):"☁️ 登入";authPill.title=cloudUser?"雲端帳號／管理":"登入雲端帳號";authPill.onclick=()=>{haptic(authPill);openAuth();};}
 }
 function updateBookPill(){updateHeaderPills()}
 async function openAuth(){
@@ -199,7 +212,7 @@ async function openAuth(){
     })();
     return;
   }
-  modal.innerHTML=`<div class="modal"><div class="sheet authbox"><button type="button" class="close" onclick="closeModal()">×</button><h2>☁️ 米杯雲端</h2><div class="small">登入後可以把目前帳本備份到雲端，並管理私人／共享帳簿。</div><input id="authEmail" type="email" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Email"><input id="authPass" type="password" autocomplete="off" placeholder="密碼（至少 6 碼）"><div class="auth-actions"><button class="primary" onclick="haptic(this);signInCloud().catch(e=>alert('登入失敗：'+(e.message||e)))">登入</button><button class="pill" onclick="haptic(this);signUpCloud().catch(e=>alert('註冊失敗：'+(e.message||e)))">註冊</button></div><div class="auth-version">米杯記帳 V35 測試版</div><button class="modalCancel" style="width:100%;margin-top:10px" onclick="closeModal()">取消</button></div></div>`;
+  modal.innerHTML=`<div class="modal"><div class="sheet authbox"><button type="button" class="close" onclick="closeModal()">×</button><h2>☁️ 米杯雲端</h2><div class="small">登入後可以把目前帳本備份到雲端，並管理私人／共享帳簿。</div><input id="authEmail" type="email" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Email"><input id="authPass" type="password" autocomplete="off" placeholder="密碼（至少 6 碼）"><div class="auth-actions"><button class="primary" onclick="haptic(this);signInCloud().catch(e=>alert('登入失敗：'+(e.message||e)))">登入</button><button class="pill" onclick="haptic(this);signUpCloud().catch(e=>alert('註冊失敗：'+(e.message||e)))">註冊</button></div><div class="auth-version">米杯記帳 V38 測試版</div><button class="modalCancel" style="width:100%;margin-top:10px" onclick="closeModal()">取消</button></div></div>`;
   // 每次重新開啟登入視窗都保持空白，避免瀏覽器沿用上一個帳號。
   setTimeout(()=>{const e=document.getElementById("authEmail"),p=document.getElementById("authPass");if(e)e.value="";if(p)p.value="";},80);
 }
@@ -376,7 +389,7 @@ function addEntry(){
   const entry={id:Date.now(),date:today(),createdAt:now.toISOString(),createdBy:cloudUser?.id||"local",createdByName:cloudUser?cloudDisplayName():"本機",type,amount:n,cat:selectedCat,accountId:selectedAccount||"",note};
   state.entries.push(entry);save();closeModal();
 }
-function formatTimestamp(value){if(!value)return "時間未記錄";const d=new Date(value);if(Number.isNaN(d.getTime()))return String(value);return d.toLocaleString("zh-TW",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});}
+function formatTimestamp(value){if(!value)return "時間未記錄";const d=new Date(value);if(Number.isNaN(d.getTime()))return String(value);return d.toLocaleString("zh-TW",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false});}
 function recordAuthor(e){return e.createdByName||((e.createdBy&&e.createdBy!=="local")?"其他成員":"未記錄")}
 function addIncomeOrExpenseCat(){let n=prompt("新增"+(type==="income"?"收入":"支出")+"分類名稱");if(!n)return;let e=prompt("分類圖示","📌")||"📌";(type==="income"?state.incomeCats:state.cats).push([e,n]);openAdd()}
 function records(arr){
