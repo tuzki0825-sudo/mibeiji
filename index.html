@@ -19,13 +19,13 @@
 .type-switch .typebtn{width:100%;min-height:48px;border-radius:11px;background:transparent;color:var(--muted);font-weight:700;font-size:17px}
 .type-switch .typebtn.active{background:var(--accent);color:#fff;box-shadow:0 3px 8px rgba(183,123,75,.18)}
 .dashboard{overflow:hidden}.dashtitle{font-size:25px;font-weight:800;margin:3px 0 14px}.assetbox{background:#f0e4d6;border-radius:17px;padding:15px;margin-bottom:15px}.assetbox span{display:block;color:var(--muted);font-size:12px}.assetbox strong{display:block;font-size:31px;margin-top:4px}.dashbar{margin:13px 0}.dashtrack{height:10px;background:#e9dfd4;border-radius:99px;overflow:hidden;margin-top:7px}.dashfill{height:100%;background:var(--accent);border-radius:99px;min-width:2px}.dashfill.green{background:var(--green)}.dashfill.red{background:var(--red)}.record{padding:11px 0;border-bottom:1px solid var(--line)}.record:last-child{border-bottom:0}.progress{height:9px;background:#eadfd2;border-radius:99px;overflow:hidden;margin:9px 0}.bar{height:100%;background:var(--accent);border-radius:99px}.bar.over{background:var(--red)}.budgetline{padding:13px 0;border-bottom:1px solid var(--line)}.budgetline:last-child{border-bottom:0}.money{font-weight:750}.empty{text-align:center;color:var(--muted);padding:28px 10px}.modal{position:fixed;inset:0;background:rgba(60,45,35,.28);display:flex;align-items:flex-end;z-index:20}.sheet{background:var(--bg);width:100%;max-width:620px;margin:auto;border-radius:24px 24px 0 0;padding:20px;max-height:90vh;overflow:auto}.close{-webkit-appearance:none;appearance:none;position:absolute;right:16px;top:16px;z-index:50;background:#eadfd2;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--ink);cursor:pointer;touch-action:manipulation}.sheet{position:relative;padding-top:72px}.modal .sheet:before{content:"記一筆";position:absolute;left:20px;top:20px;font-size:22px;font-weight:800}.close{right:16px;top:14px;width:52px;height:52px;font-size:28px;font-weight:800;z-index:999}.modalCancel{width:100%;min-height:52px;margin-top:12px;border-radius:14px;background:#eadfd2;color:var(--ink);font-size:17px;font-weight:800}.entry-sheet.expense-mode{background:#fff4f1}.entry-sheet.income-mode{background:#f1f8f2}.entry-sheet.expense-mode .type-switch{background:#f3dcd8}.entry-sheet.income-mode .type-switch{background:#dcecdf}.entry-sheet.expense-mode .typebtn.active{background:#bd655c}.entry-sheet.income-mode .typebtn.active{background:#63866d}.entry-sheet.expense-mode .cat.sel{border-color:#bd655c;background:#fff0ed}.entry-sheet.income-mode .cat.sel{border-color:#63866d;background:#edf7ef}.entry-sheet.expense-mode .keypad button{background:#f6e2de}.entry-sheet.income-mode .keypad button{background:#e3f0e5}.entry-sheet.expense-mode #saveEntryBtn{background:#bd655c!important}.entry-sheet.income-mode #saveEntryBtn{background:#63866d!important}.entry-sheet.expense-mode .amount{color:#a8524b}.entry-sheet.income-mode .amount{color:#50725a}
-</style></head><body><div class="app"><header><div><h1>米杯記帳</h1><div class="sub" id="dateText"></div></div><span class="pill">V15</span></header><main id="root"></main>
+</style></head><body><div class="app"><header><div><h1>米杯記帳</h1><div class="sub" id="dateText"></div></div><span class="pill">V16</span></header><main id="root"></main>
 <nav class="nav"><button data-page="home">🏠<span class="ico"></span>首頁</button><button data-page="stats">📊<span class="ico"></span>統計</button><button class="plus" onclick="openAdd()">＋</button><button data-page="budget">🎯<span class="ico"></span>預算</button><button data-page="accounts">🏦<span class="ico"></span>帳戶</button></nav></div><div id="modal"></div>
 <script>
 const KEY="mibeiji_v5";const old=JSON.parse(localStorage.getItem("mibeiji_v4")||localStorage.getItem("mibeiji_v3")||"null");
-let state=old||{entries:[],cats:[["🍚","吃飯"],["🏠","房租"],["🚗","交通"],["🎮","娛樂"],["📌","固定支出"]],incomeCats:[["💼","薪水"],["🎁","獎金"],["📈","投資"],["💰","副業"],["🎉","紅包"],["↩️","退款"]],accounts:[{id:"cash",name:"現金",emoji:"💵",initial:0},{id:"bank",name:"銀行",emoji:"🏦",initial:0},{id:"card",name:"信用卡",emoji:"💳",initial:0}],budgets:{}};
+let state=old||{entries:[],cats:[["🍚","吃飯"],["🏠","房租"],["🚗","交通"],["🎮","娛樂"],["📌","固定支出"]],incomeCats:[["💼","薪水"],["🎁","獎金"],["📈","投資"],["💰","副業"],["🎉","紅包"],["↩️","退款"]],accounts:[{id:"cash",name:"現金",emoji:"💵",initial:0},{id:"bank",name:"銀行",emoji:"🏦",initial:0},{id:"card",name:"信用卡",emoji:"💳",initial:0}],budgets:{},fixedExpenses:[]};
 if(!state.incomeCats)state.incomeCats=[["💼","薪水"],["🎁","獎金"],["📈","投資"],["💰","副業"],["🎉","紅包"],["↩️","退款"]];
-if(!state.budgets)state.budgets={};localStorage.setItem(KEY,JSON.stringify(state));
+if(!state.budgets)state.budgets={};if(!state.fixedExpenses)state.fixedExpenses=[];localStorage.setItem(KEY,JSON.stringify(state));
 let page="home",type="expense",amount="",selectedCat=state.cats[0]?.[1]||"吃飯",selectedAccount="";
 const money=n=>"$"+Math.round(n||0).toLocaleString("zh-TW"),today=()=>new Date().toISOString().slice(0,10),monthKey=(d=today())=>d.slice(0,7);
 document.getElementById("dateText").textContent=new Date().toLocaleDateString("zh-TW",{year:"numeric",month:"long",day:"numeric"});
@@ -160,7 +160,58 @@ function moveStats(dir){
  else {let s=dateObj(statsStart||statsDate),e=dateObj(statsEnd||statsDate);let span=Math.max(1,Math.round((e-s)/86400000)+1);s.setUTCDate(s.getUTCDate()+dir*span);e.setUTCDate(e.getUTCDate()+dir*span);statsStart=isoDate(s);statsEnd=isoDate(e);statsDate=statsStart;return render()}
  statsDate=isoDate(d);render()
 }
-function budgetPage(){let k=monthKey(),bs=state.budgets[k]||{},total=Object.entries(bs).filter(([x])=>x!=="income").reduce((s,[,v])=>s+Number(v||0),0),expected=Number(bs.income||0);return `<div class="page"><div class="card"><div class="row"><div><div class="hero">${k} 預算計畫</div><div class="big">${money(expected)}</div><div class="small">預期收入</div></div><button class="pill" onclick="setExpectedIncome()">設定預期收入</button></div><div class="grid2" style="margin-top:12px"><div class="stat">預計支出<b>${money(total)}</b></div><div class="stat">實際支出<b class="red">${money(exp(k))}</b></div></div></div><div class="card"><div class="row"><b>支出預算分配</b><button class="pill" onclick="addCat()">＋分類</button></div>${state.cats.map(c=>{let b=budget(k,c[1]),s=spent(k,c[1]),p=b?s/b*100:0;return `<div class="budgetline"><div class="row"><span>${c[0]} ${esc(c[1])}</span><span class="${p>100?"red":""}">${money(s)} / ${money(b)}</span></div><div class="progress"><div class="bar ${p>100?"over":""}" style="width:${Math.min(100,p)}%"></div></div><div class="row small"><span>${b?(p>100?"超支 "+money(s-b):"剩餘 "+money(b-s)):"尚未設定"}</span><span><button class="pill" onclick="setBudget('${esc(c[1])}')">設定</button> <button class="pill" onclick="detail('${esc(c[1])}')">明細</button></span></div></div>`}).join("")}</div><div class="card"><b>📅 本月預期 vs 實際</b><div class="budgetline"><div class="row"><span>預期收入</span><b>${money(expected)}</b></div><div class="row"><span>實際收入</span><b class="green">${money(inc(k))}</b></div><div class="row"><span>差額</span><b class="${inc(k)-expected>=0?"green":"red"}">${inc(k)-expected>=0?"+":"-"}${money(Math.abs(inc(k)-expected))}</b></div></div><div class="budgetline"><div class="row"><span>預計支出</span><b>${money(total)}</b></div><div class="row"><span>實際支出</span><b class="red">${money(exp(k))}</b></div><div class="row"><span>差額</span><b class="${exp(k)<=total?"green":"red"}">${exp(k)<=total?"還省下 ":"超支 "}${money(Math.abs(total-exp(k)))}</b></div></div></div></div>`}
+function applyFixedExpenses(){
+ const k=monthKey();
+ if(!state.fixedExpenses?.length)return;
+ let changed=false;
+ state.fixedExpenses.forEach(f=>{
+   if(f.enabled===false)return;
+   const day=Math.min(Math.max(Number(f.day)||1,1),28);
+   const date=k+"-"+String(day).padStart(2,"0");
+   const exists=state.entries.some(e=>e.fixedId===f.id&&e.date===date);
+   if(!exists){
+     state.entries.push({id:Date.now()+Math.floor(Math.random()*100000),date,type:"expense",amount:Number(f.amount)||0,cat:f.cat||"固定支出",accountId:f.accountId||"",note:"固定支出｜"+f.name,fixedId:f.id});
+     changed=true;
+   }
+ });
+ if(changed)localStorage.setItem(KEY,JSON.stringify(state));
+}
+function addFixedExpense(){
+ const name=prompt("固定支出項目名稱，例如：房租、手機費、Netflix");
+ if(!name?.trim())return;
+ const amount=prompt("每月固定金額", "0");
+ if(amount===null)return;
+ const n=Number(amount);
+ if(!n||n<=0){alert("請輸入正確金額");return;}
+ const cat=prompt("分類名稱", "固定支出")||"固定支出";
+ const day=prompt("每月幾號自動套用？（1～28）","1");
+ const d=Math.min(Math.max(Number(day)||1,1),28);
+ state.fixedExpenses.push({id:"fx_"+Date.now(),name:name.trim(),amount:n,cat:cat.trim()||"固定支出",day:d,enabled:true});
+ save();
+}
+function editFixedExpense(id){
+ const f=state.fixedExpenses.find(x=>x.id===id); if(!f)return;
+ const name=prompt("項目名稱",f.name); if(name===null)return;
+ const amount=prompt("每月金額",f.amount); if(amount===null)return;
+ const n=Number(amount); if(!n||n<=0){alert("請輸入正確金額");return;}
+ const day=prompt("每月幾號自動套用？",f.day); if(day===null)return;
+ f.name=name.trim()||f.name; f.amount=n; f.day=Math.min(Math.max(Number(day)||1,1),28);
+ save();
+}
+function delFixedExpense(id){if(confirm("確定刪除這個固定支出？（不會刪除已經產生的歷史帳目）")){state.fixedExpenses=state.fixedExpenses.filter(f=>f.id!==id);save();}}
+function toggleFixedExpense(id){const f=state.fixedExpenses.find(x=>x.id===id);if(f){f.enabled=f.enabled===false;save();}}
+function budgetPage(){
+ applyFixedExpenses();
+ let k=monthKey(),bs=state.budgets[k]||{},fixedTotal=state.fixedExpenses.filter(f=>f.enabled!==false).reduce((s,f)=>s+Number(f.amount||0),0);
+ let total=Object.entries(bs).filter(([x])=>x!=="income").reduce((s,[,v])=>s+Number(v||0),0),expected=Number(bs.income||0);
+ const fixedHtml=state.fixedExpenses.length?state.fixedExpenses.map(f=>`<div class="budgetline"><div class="row"><span>📌 ${esc(f.name)}</span><b>${money(f.amount)}</b></div><div class="small">每月 ${f.day} 號 · ${esc(f.cat)} · ${f.enabled===false?"已停用":"每月自動套用"}</div><div style="margin-top:7px"><button class="pill" onclick="editFixedExpense('${f.id}')">編輯</button> <button class="pill" onclick="toggleFixedExpense('${f.id}')">${f.enabled===false?"啟用":"停用"}</button> <button class="pill" onclick="delFixedExpense('${f.id}')">刪除</button></div></div>`).join(""):'<div class="empty">還沒有固定支出，按「＋新增」建立每月固定帳單</div>';
+ return `<div class="page">
+ <div class="card"><div class="row"><div><div class="hero">${k} 預算計畫</div><div class="big">${money(expected)}</div><div class="small">預期收入</div></div><button class="pill" onclick="setExpectedIncome()">設定預期收入</button></div>
+ <div class="grid2" style="margin-top:12px"><div class="stat">每月固定支出<b class="red">${money(fixedTotal)}</b></div><div class="stat">其他預算<b>${money(Math.max(0,total-fixedTotal))}</b></div></div></div>
+ <div class="card"><div class="row"><b>🔁 每月固定支出</b><button class="pill" onclick="addFixedExpense()">＋新增</button></div>${fixedHtml}</div>
+ <div class="card"><div class="row"><b>支出預算分配</b><button class="pill" onclick="addCat()">＋分類</button></div>${state.cats.map(c=>{let b=budget(k,c[1]),s=spent(k,c[1]),p=b?s/b*100:0;return `<div class="budgetline"><div class="row"><span>${c[0]} ${esc(c[1])}</span><span class="${p>100?"red":""}">${money(s)} / ${money(b)}</span></div><div class="progress"><div class="bar ${p>100?"over":""}" style="width:${Math.min(100,p)}%"></div></div><div class="row small"><span>${b?(p>100?"超支 "+money(s-b):"剩餘 "+money(b-s)):"尚未設定"}</span><span><button class="pill" onclick="setBudget('${esc(c[1])}')">設定</button> <button class="pill" onclick="detail('${esc(c[1])}')">明細</button></span></div></div>`}).join("")}</div>
+ <div class="card"><b>📅 本月預期 vs 實際</b><div class="budgetline"><div class="row"><span>預期收入</span><b>${money(expected)}</b></div><div class="row"><span>實際收入</span><b class="green">${money(inc(k))}</b></div><div class="row"><span>差額</span><b class="${inc(k)-expected>=0?"green":"red"}">${inc(k)-expected>=0?"+":"-"}${money(Math.abs(inc(k)-expected))}</b></div></div><div class="budgetline"><div class="row"><span>預計支出</span><b>${money(total)}</b></div><div class="row"><span>實際支出</span><b class="red">${money(exp(k))}</b></div><div class="row"><span>差額</span><b class="${exp(k)<=total?"green":"red"}">${exp(k)<=total?"還省下 ":"超支 "}${money(Math.abs(total-exp(k)))}</b></div></div></div></div>`
+}
 function setExpectedIncome(){let k=monthKey(),v=prompt("本月預期收入",state.budgets[k]?.income||0);if(v!==null){state.budgets[k]=state.budgets[k]||{};state.budgets[k].income=Number(v)||0;save()}}
 function setBudget(c){let k=monthKey(),v=prompt("設定「"+c+"」本月預算",budget(k,c));if(v!==null){state.budgets[k]=state.budgets[k]||{};state.budgets[k][c]=Number(v)||0;save()}}
 function addCat(){let n=prompt("新增支出分類名稱");if(!n)return;state.cats.push([prompt("圖示","📌")||"📌",n]);save()}
