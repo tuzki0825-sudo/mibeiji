@@ -3,7 +3,7 @@
 <meta name="theme-color" content="#f7f1e7"><link rel="manifest" href="manifest.json"><title>米杯記帳</title>
 <style>
 :root{--bg:#f7f1e7;--card:#fffaf2;--ink:#40382f;--muted:#8b8176;--line:#eadfd1;--accent:#b77b4b;--green:#63866d;--red:#bd655c;--shadow:0 8px 24px rgba(90,65,40,.07)}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif;touch-action:manipulation}button,input,select{font:inherit}button{border:0;cursor:pointer}body{overscroll-behavior:none}.app{max-width:620px;margin:auto;min-height:100vh;padding-bottom:92px}header{padding:28px 20px 14px;display:flex;justify-content:space-between;align-items:center}h1{font-size:25px;margin:0}.sub,.small{font-size:12px;color:var(--muted)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif;touch-action:manipulation}button,input,select{font:inherit}button{border:0;cursor:pointer}body{overscroll-behavior:none}.app{max-width:620px;margin:auto;min-height:100vh;padding-bottom:92px}header{padding:28px 16px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px}.header-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;min-width:0}.header-pill{min-height:40px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:7px 10px}.book-pill{max-width:145px}.auth-pill{max-width:92px}h1{font-size:25px;margin:0}.sub,.small{font-size:12px;color:var(--muted)}
 .range-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .range-title{display:block;font-size:20px;line-height:1.25;margin-top:5px;word-break:break-word}
 .range-arrows{display:flex;gap:8px;flex-shrink:0}
@@ -48,7 +48,7 @@
   opacity: .9;
 }
 </style>
-</head><body><div class="app"><header><div><h1>米杯記帳</h1><div class="sub" id="dateText"></div></div><span class="pill haptic-press" id="authPill" onclick="haptic(this);openAuth()">☁️ 登入</span></header><main id="root"></main>
+</head><body><div class="app"><header><div><h1>米杯記帳</h1><div class="sub" id="dateText"></div></div><div class="header-actions"><button class="pill haptic-press header-pill book-pill" id="bookPill" onclick="haptic(this);openBookPicker()">📚 帳本</button><button class="pill haptic-press header-pill auth-pill" id="authPill" onclick="haptic(this);openAuth()">☁️ 登入</button></div></header><main id="root"></main>
 <nav class="nav"><button data-page="home">🏠<span class="ico"></span>首頁</button><button data-page="stats">📊<span class="ico"></span>統計</button><button class="plus" onclick="openAdd()">＋</button><button data-page="budget">🎯<span class="ico"></span>預算</button><button data-page="accounts">🏦<span class="ico"></span>帳戶</button></nav></div><div id="modal"></div>
 <script>
 
@@ -114,7 +114,7 @@ async function getSnapshot(bookId=cloudBookId){
 async function uploadSnapshot(bookId=cloudBookId, stateToUpload=state){
  if(!cloudUser)return;if(!bookId)await ensureCloudBook();
  const updatedAt=new Date().toISOString();
- const payload={...stateToUpload,_mibeiji_version:35,_mibeiji_book_id:bookId};
+ const payload={...stateToUpload,_mibeiji_version:37,_mibeiji_book_id:bookId};
  const {data,error}=await sb.rpc("save_book_snapshot",{p_book_id:bookId,p_payload:payload,p_updated_at:updatedAt});
  if(error)throw error; const row=Array.isArray(data)?data[0]:data;
  cloudLastUpdatedAt=row?.updated_at||updatedAt;localStorage.setItem("mibeiji_cloud_updated_at",cloudLastUpdatedAt);cloudDirty=false;
@@ -155,17 +155,9 @@ async function deleteSharedBook(bookId){const b=cloudBooks.find(x=>x.id===bookId
 async function leaveSharedBook(bookId){const b=cloudBooks.find(x=>x.id===bookId);if(!b||b.book_type!=="shared"||b.role!=="member")return alert("只有共同帳簿成員可以退出");if(!confirm("確定要退出「"+bookLabel(b)+"」嗎？\n退出後你將看不到這本共同帳簿。"))return;const {error}=await sb.rpc("leave_shared_book",{p_book_id:bookId});if(error)throw error;cloudBooks=cloudBooks.filter(x=>x.id!==bookId);if(cloudBookId===bookId){cloudBookId=null;localStorage.removeItem("mibeiji_active_book_id");const next=cloudBooks.find(x=>x.book_type!=="shared")||cloudBooks[0];if(next){await switchCloudBook(next.id);}else{state=normalizeState({});localStorage.setItem(KEY,JSON.stringify(state));render();}}openAuth();alert("🚪 已退出共同帳簿");}
 async function shareInfoById(bookId){const b=cloudBooks.find(x=>x.id===bookId);if(!b)return alert("找不到這本帳簿");if(b.book_type!=="shared")return alert("這是私人帳簿，不需要共享邀請碼。");if(b.invite_code)return alert("❤️ "+bookLabel(b)+"\n\n共享邀請碼：\n"+b.invite_code+"\n\n把這組邀請碼給對方即可加入。");try{await loadCloudBooks();const fresh=cloudBooks.find(x=>x.id===bookId);if(fresh?.invite_code)return alert("❤️ "+bookLabel(fresh)+"\n\n共享邀請碼：\n"+fresh.invite_code+"\n\n把這組邀請碼給對方即可加入。");alert("這本共享帳簿目前沒有取得邀請碼，請確認 Supabase 的 invite_code 是否已建立。");}catch(e){alert("無法取得邀請碼："+(e.message||e));}}
 async function refreshAuth(){
-  try{
-    const {data,error}=await sb.auth.getUser();
-    if(error)throw error;
-    cloudUser=data?.user||null;
-  }catch(e){
-    console.error("取得登入狀態失敗",e);
-    cloudUser=null;
-  }
+  try{const {data,error}=await sb.auth.getUser();if(error)throw error;cloudUser=data?.user||null;}catch(e){console.error("取得登入狀態失敗",e);cloudUser=null;}
   if(!cloudUser){cloudProfile={display_name:""};cloudBooks=[];cloudBookId=null;}
-  const pill=document.getElementById("authPill");
-  if(pill){pill.textContent=cloudUser?(activeBook()?"📚 "+bookLabel(activeBook()):"📚 選擇帳簿"):"☁️ 登入";pill.classList.toggle("book-current",!!cloudUser);pill.onclick=cloudUser?()=>{haptic(pill);openBookPicker()}:()=>{haptic(pill);openAuth()};}
+  updateHeaderPills();
 }
 async function openBookPicker(){
   const modal=document.getElementById("modal");
@@ -173,7 +165,12 @@ async function openBookPicker(){
   modal.innerHTML=`<div class="modal"><div class="sheet authbox"><button type="button" class="close" onclick="closeModal()">×</button><h2>📚 選擇帳簿</h2><div id="pickerStatus" class="cloud-status">載入中…</div><div id="pickerList" class="book-section"></div><div class="book-actions"><button class="pill" onclick="createSharedBook().catch(e=>alert('建立失敗：'+(e.message||e)))">＋ 建立共同帳簿</button><button class="pill" onclick="joinSharedBook().catch(e=>alert('加入失敗：'+(e.message||e)))">🔗 加入共同帳簿</button></div><button class="modalCancel" style="width:100%;margin-top:10px" onclick="openAuth()">☁️ 雲端帳號／管理</button><button type="button" class="modalCancel" style="width:100%;margin-top:8px" onclick="closeModal()">取消</button></div></div>`;
   try{await ensureCloudBook();const b=activeBook();const status=document.getElementById("pickerStatus");if(status)status.innerHTML=`目前：<b>${esc(bookLabel(b))}</b>${b?`（${b.book_type==='shared'?'共同帳簿':'私人帳簿'}）`:''}`;const wrap=document.getElementById("pickerList");if(wrap)wrap.innerHTML=`<div class="book-section-title">我的帳簿</div>${renderBookList()}`;updateBookPill();}catch(e){const status=document.getElementById("pickerStatus");if(status)status.textContent="帳簿載入失敗："+(e.message||e);}
 }
-function updateBookPill(){const pill=document.getElementById("authPill");if(!pill)return;if(cloudUser){const b=activeBook();pill.textContent=b?"📚 "+bookLabel(b):"📚 選擇帳簿";pill.classList.add("book-current");pill.onclick=()=>{haptic(pill);openBookPicker()};}else{pill.textContent="☁️ 登入";pill.classList.remove("book-current");pill.onclick=()=>{haptic(pill);openAuth()};}}
+function updateHeaderPills(){
+  const bookPill=document.getElementById("bookPill"),authPill=document.getElementById("authPill"),b=activeBook();
+  if(bookPill){bookPill.textContent=cloudUser?(b?"📚 "+bookLabel(b):"📚 選擇帳本"):"📚 帳本";bookPill.title=cloudUser?(b?bookLabel(b):"選擇帳本"):"登入後選擇帳本";bookPill.onclick=()=>{haptic(bookPill);if(cloudUser)openBookPicker();else openAuth();};}
+  if(authPill){authPill.textContent=cloudUser?"☁️ 雲端":"☁️ 登入";authPill.title=cloudUser?"雲端帳號／管理":"登入雲端帳號";authPill.onclick=()=>{haptic(authPill);openAuth();};}
+}
+function updateBookPill(){updateHeaderPills()}
 async function openAuth(){
   const modal=document.getElementById("modal");
   let user=null;
@@ -373,16 +370,18 @@ function key(k){
 }
 function addEntry(){
   const n=Number(amount);
-  if(!n || n<=0){alert("請先輸入金額");return;}
+  if(!n||n<=0){alert("請先輸入金額");return;}
   if(!selectedCat){alert("請選擇分類");return;}
-  const note=document.getElementById("note")?.value||window._entryNote||"";
-  const entry={id:Date.now(),date:today(),type,amount:n,cat:selectedCat,accountId:selectedAccount||"",note};
-  state.entries.push(entry);
-  save();
-  closeModal();
+  const note=document.getElementById("note")?.value||window._entryNote||"", now=new Date();
+  const entry={id:Date.now(),date:today(),createdAt:now.toISOString(),createdBy:cloudUser?.id||"local",createdByName:cloudUser?cloudDisplayName():"本機",type,amount:n,cat:selectedCat,accountId:selectedAccount||"",note};
+  state.entries.push(entry);save();closeModal();
 }
+function formatTimestamp(value){if(!value)return "時間未記錄";const d=new Date(value);if(Number.isNaN(d.getTime()))return String(value);return d.toLocaleString("zh-TW",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});}
+function recordAuthor(e){return e.createdByName||((e.createdBy&&e.createdBy!=="local")?"其他成員":"未記錄")}
 function addIncomeOrExpenseCat(){let n=prompt("新增"+(type==="income"?"收入":"支出")+"分類名稱");if(!n)return;let e=prompt("分類圖示","📌")||"📌";(type==="income"?state.incomeCats:state.cats).push([e,n]);openAdd()}
-function records(arr){if(!arr.length)return '<div class="empty">目前沒有紀錄</div>';return arr.map(e=>`<div class="record"><div class="row"><span>${e.type==="income"?"💰":"🧾"} ${esc(e.cat)}</span><span class="${e.type==="income"?"green":"red"} money">${e.type==="income"?"+":"-"}${money(e.amount)}</span></div><div class="small">${e.date}${e.note?" · "+esc(e.note):""}${e.accountId?" · "+esc(state.accounts.find(a=>a.id===e.accountId)?.name||""):" · 不指定帳戶"}</div><button class="small" onclick="del(${e.id})">刪除</button></div>`).join("")}
+function records(arr){
+  if(!arr.length)return '<div class="empty">目前沒有紀錄</div>';
+  return arr.map(e=>`<div class="record"><div class="row"><span>${e.type==="income"?"💰":"🧾"} ${esc(e.cat)}</span><span class="${e.type==="income"?"green":"red"} money">${e.type==="income"?"+":"-"}${money(e.amount)}</span></div><div class="small">👤 ${esc(recordAuthor(e))} · 🕒 ${esc(formatTimestamp(e.createdAt))}</div><div class="small">${e.date}${e.note?" · "+esc(e.note):""}${e.accountId?" · "+esc(state.accounts.find(a=>a.id===e.accountId)?.name||""):" · 不指定帳戶"}</div><button class="small" onclick="del(${e.id})">刪除</button></div>`).join("")}
 function del(id){if(confirm("確定刪除這筆紀錄？")){state.entries=state.entries.filter(e=>e.id!==id);save()}}
 let statsMode="month", statsDate=new Date().toISOString().slice(0,10), statsStart="", statsEnd="";
 function pad(n){return String(n).padStart(2,"0")}
