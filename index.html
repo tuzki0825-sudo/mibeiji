@@ -32,7 +32,9 @@
 .haptic-press{transition:transform .08s ease,filter .08s ease}
 .haptic-press.is-pressed{transform:scale(.96);filter:brightness(.96)}
 
-.cloud-status{background:#efe6db;border-radius:12px;padding:10px;font-size:13px;margin:10px 0}.book-section{margin-top:14px}.book-section-title{font-weight:800;margin-bottom:7px}.book-choice{width:100%;display:grid;grid-template-columns:28px 1fr 24px;gap:8px;align-items:center;text-align:left;padding:11px 12px;margin:6px 0;border:1px solid var(--line);border-radius:14px;background:#fffaf2;color:var(--ink)}.book-choice.active{border-color:var(--accent);background:#fff3e5}.book-choice-text{display:flex;flex-direction:column;gap:2px}.book-choice-text small{font-size:11px;color:var(--muted)}.book-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.book-actions button{min-height:48px;font-weight:800}.authbox .book-choice{font:inherit}
+.cloud-status{background:#efe6db;border-radius:12px;padding:10px;font-size:13px;margin:10px 0}.book-section{margin-top:14px}.book-section-title{font-weight:800;margin-bottom:7px}.book-choice{width:100%;display:grid;grid-template-columns:28px 1fr 24px;gap:8px;align-items:center;text-align:left;padding:11px 12px;margin:6px 0;border:1px solid var(--line);border-radius:14px;background:#fffaf2;color:var(--ink)}.book-row{margin:6px 0}.book-row .book-choice{margin:0}.invite-btn{width:100%;margin-top:5px;min-height:42px;font-weight:800}.book-choice.active{border-color:var(--accent);background:#fff3e5}.book-choice-text{display:flex;flex-direction:column;gap:2px}.book-choice-text small{font-size:11px;color:var(--muted)}.book-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.book-actions button{min-height:48px;font-weight:800}.authbox .book-choice{font:inherit}
+.book-tools{display:flex;gap:7px;flex-wrap:wrap;margin:7px 0 0 42px}.book-tools .pill{font-size:12px;padding:7px 10px}.danger-pill{color:var(--red)}
+.book-tools{display:flex;gap:7px;flex-wrap:wrap;margin:7px 0 0 42px}.book-tools .pill{font-size:12px;padding:7px 10px}.danger-pill{color:var(--red)}
 </style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style id="v22-auth-version">
 .authbox .auth-actions + .auth-version{
@@ -86,13 +88,9 @@ function bookLabel(b){return b?.name||"我的帳簿"}
 function bookKind(b){return b?.book_type==="shared"?"shared":"personal"}
 async function loadCloudBooks(){
  if(!cloudUser)return [];
- const {data,error}=await sb.from("book_members").select("book_id,role").eq("user_id",cloudUser.id);
+ const {data,error}=await sb.rpc("list_my_books");
  if(error)throw error;
- const ids=(data||[]).map(x=>x.book_id);
- if(!ids.length){cloudBooks=[];return []}
- const {data:books,error:be}=await sb.from("books").select("id,name,owner_id,book_type,invite_code").in("id",ids);
- if(be)throw be;
- cloudBooks=(books||[]).map(b=>({...b,role:(data.find(m=>m.book_id===b.id)||{}).role||"member"}));
+ cloudBooks=(data||[]).map(b=>({...b,role:b.role||"member"}));
  return cloudBooks;
 }
 async function ensureCloudBook(preferredId=null){
@@ -108,13 +106,18 @@ async function ensureCloudBook(preferredId=null){
  if(ae)throw ae;
  cloudBookId=book.id;localStorage.setItem("mibeiji_active_book_id",cloudBookId);await loadCloudBooks();return cloudBookId;
 }
-async function getSnapshot(bookId=cloudBookId){if(!bookId)await ensureCloudBook();const {data,error}=await sb.from("book_snapshots").select("payload,updated_at").eq("book_id",bookId).maybeSingle();if(error)throw error;return data||null}
+async function getSnapshot(bookId=cloudBookId){
+ if(!bookId)await ensureCloudBook();
+ const {data,error}=await sb.rpc("get_book_snapshot",{p_book_id:bookId});
+ if(error)throw error; const row=Array.isArray(data)?data[0]:data; return row||null;
+}
 async function uploadSnapshot(bookId=cloudBookId, stateToUpload=state){
  if(!cloudUser)return;if(!bookId)await ensureCloudBook();
  const updatedAt=new Date().toISOString();
- const payload={...stateToUpload,_mibeiji_version:28,_mibeiji_book_id:bookId};
- const {data,error}=await sb.from("book_snapshots").upsert({book_id:bookId,payload,updated_by:cloudUser.id,updated_at:updatedAt},{onConflict:"book_id"}).select("updated_at").single();
- if(error)throw error;cloudLastUpdatedAt=data?.updated_at||updatedAt;localStorage.setItem("mibeiji_cloud_updated_at",cloudLastUpdatedAt);cloudDirty=false;
+ const payload={...stateToUpload,_mibeiji_version:34,_mibeiji_book_id:bookId};
+ const {data,error}=await sb.rpc("save_book_snapshot",{p_book_id:bookId,p_payload:payload,p_updated_at:updatedAt});
+ if(error)throw error; const row=Array.isArray(data)?data[0]:data;
+ cloudLastUpdatedAt=row?.updated_at||updatedAt;localStorage.setItem("mibeiji_cloud_updated_at",cloudLastUpdatedAt);cloudDirty=false;
 }
 async function syncBook(bookId=cloudBookId,fromLogin=false,silent=false){
  if(cloudBusy||!cloudUser||!bookId)return;cloudBusy=true;
@@ -146,7 +149,11 @@ async function joinSharedBook(){
  const {data,error}=await sb.rpc("join_shared_book",{p_invite_code:code});if(error)throw error;await loadCloudBooks();const id=typeof data==="string"?data:data?.id;if(id){await switchCloudBook(id);alert("❤️ 已加入共享帳簿："+bookLabel(activeBook()))}else{alert("已加入共享帳簿")}
 }
 function shareInfo(){const b=activeBook();if(!b)return alert("尚未建立帳簿");if(bookKind(b)!=="shared")return alert("這是私人帳簿，不需要共享邀請碼。");alert("❤️ "+bookLabel(b)+"\n邀請碼："+(b.invite_code||"尚未設定"))}
-function renderBookList(){return cloudBooks.map(b=>`<button class="book-choice ${b.id===cloudBookId?"active":""}" onclick="switchCloudBook('${b.id}').catch(e=>alert('切換失敗：'+(e.message||e)))"><span>${b.book_type==='shared'?'❤️':'👤'}</span><span class="book-choice-text"><b>${esc(bookLabel(b))}</b><small>${b.book_type==='shared'?'共享帳簿':'私人帳簿'}${b.role==='owner'?' · 擁有者':''}</small></span><span>${b.id===cloudBookId?'✓':'›'}</span></button>`).join("")||'<div class="empty">尚未有雲端帳簿</div>'}
+function renderBookList(){return cloudBooks.map(b=>`<div class="book-row"><button class="book-choice ${b.id===cloudBookId?"active":""}" onclick="switchCloudBook('${b.id}').catch(e=>alert('切換失敗：'+(e.message||e)))"><span>${b.book_type==='shared'?'❤️':'👤'}</span><span class="book-choice-text"><b>${esc(bookLabel(b))}</b><small>${b.book_type==='shared'?'共同帳簿':'私人帳簿'}${b.role==='owner'?' · 擁有者':' · 成員'}</small></span><span>${b.id===cloudBookId?'✓':'›'}</span></button>${b.book_type==='shared'?`<div class="book-tools"><button class="pill invite-btn" onclick="shareInfoById('${b.id}')">🔑 邀請碼</button>${b.role==='owner'?`<button class="pill" onclick="renameBook('${b.id}').catch(e=>alert('修改失敗：'+(e.message||e)))">✏️ 改名</button><button class="pill danger-pill" onclick="deleteSharedBook('${b.id}').catch(e=>alert('刪除失敗：'+(e.message||e)))">🗑️ 刪除</button>`:`<button class="pill" onclick="leaveSharedBook('${b.id}').catch(e=>alert('退出失敗：'+(e.message||e)))">🚪 退出</button>`}</div>`:''}</div>`).join('')||'<div class="empty">尚未有雲端帳簿</div>'}
+async function renameBook(bookId){const b=cloudBooks.find(x=>x.id===bookId);if(!b||b.book_type!=="shared"||b.role!=="owner")return alert("只有共同帳簿擁有者可以改名");const name=(prompt("請輸入新的帳簿名稱",b.name||"")||"").trim().slice(0,50);if(!name||name===b.name)return;const {error}=await sb.rpc("rename_book",{p_book_id:bookId,p_name:name});if(error)throw error;await loadCloudBooks();openAuth();alert("✅ 帳簿名稱已更新");}
+async function deleteSharedBook(bookId){const b=cloudBooks.find(x=>x.id===bookId);if(!b||b.book_type!=="shared"||b.role!=="owner")return alert("只有共同帳簿擁有者可以刪除");if(!confirm("確定要刪除「"+bookLabel(b)+"」嗎？\n\n這會刪除這本共同帳簿與其中的記帳資料，所有成員都會失去存取權。"))return;const {error}=await sb.rpc("delete_shared_book",{p_book_id:bookId});if(error)throw error;cloudBooks=cloudBooks.filter(x=>x.id!==bookId);if(cloudBookId===bookId){cloudBookId=null;localStorage.removeItem("mibeiji_active_book_id");const next=cloudBooks.find(x=>x.book_type!=="shared")||cloudBooks[0];if(next){await switchCloudBook(next.id);}else{state=normalizeState({});localStorage.setItem(KEY,JSON.stringify(state));render();}}openAuth();alert("🗑️ 共同帳簿已刪除");}
+async function leaveSharedBook(bookId){const b=cloudBooks.find(x=>x.id===bookId);if(!b||b.book_type!=="shared"||b.role!=="member")return alert("只有共同帳簿成員可以退出");if(!confirm("確定要退出「"+bookLabel(b)+"」嗎？\n退出後你將看不到這本共同帳簿。"))return;const {error}=await sb.rpc("leave_shared_book",{p_book_id:bookId});if(error)throw error;cloudBooks=cloudBooks.filter(x=>x.id!==bookId);if(cloudBookId===bookId){cloudBookId=null;localStorage.removeItem("mibeiji_active_book_id");const next=cloudBooks.find(x=>x.book_type!=="shared")||cloudBooks[0];if(next){await switchCloudBook(next.id);}else{state=normalizeState({});localStorage.setItem(KEY,JSON.stringify(state));render();}}openAuth();alert("🚪 已退出共同帳簿");}
+async function shareInfoById(bookId){const b=cloudBooks.find(x=>x.id===bookId);if(!b)return alert("找不到這本帳簿");if(b.book_type!=="shared")return alert("這是私人帳簿，不需要共享邀請碼。");if(b.invite_code)return alert("❤️ "+bookLabel(b)+"\n\n共享邀請碼：\n"+b.invite_code+"\n\n把這組邀請碼給對方即可加入。");try{await loadCloudBooks();const fresh=cloudBooks.find(x=>x.id===bookId);if(fresh?.invite_code)return alert("❤️ "+bookLabel(fresh)+"\n\n共享邀請碼：\n"+fresh.invite_code+"\n\n把這組邀請碼給對方即可加入。");alert("這本共享帳簿目前沒有取得邀請碼，請確認 Supabase 的 invite_code 是否已建立。");}catch(e){alert("無法取得邀請碼："+(e.message||e));}}
 async function refreshAuth(){
   try{
     const {data,error}=await sb.auth.getUser();
@@ -188,7 +195,7 @@ async function openAuth(){
     })();
     return;
   }
-  modal.innerHTML=`<div class="modal"><div class="sheet authbox"><button type="button" class="close" onclick="closeModal()">×</button><h2>☁️ 米杯雲端</h2><div class="small">登入後可以把目前帳本備份到雲端，並管理私人／共享帳簿。</div><input id="authEmail" type="email" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Email"><input id="authPass" type="password" autocomplete="off" placeholder="密碼（至少 6 碼）"><div class="auth-actions"><button class="primary" onclick="haptic(this);signInCloud().catch(e=>alert('登入失敗：'+(e.message||e)))">登入</button><button class="pill" onclick="haptic(this);signUpCloud().catch(e=>alert('註冊失敗：'+(e.message||e)))">註冊</button></div><div class="auth-version">米杯記帳 V32 測試版</div><button class="modalCancel" style="width:100%;margin-top:10px" onclick="closeModal()">取消</button></div></div>`;
+  modal.innerHTML=`<div class="modal"><div class="sheet authbox"><button type="button" class="close" onclick="closeModal()">×</button><h2>☁️ 米杯雲端</h2><div class="small">登入後可以把目前帳本備份到雲端，並管理私人／共享帳簿。</div><input id="authEmail" type="email" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Email"><input id="authPass" type="password" autocomplete="off" placeholder="密碼（至少 6 碼）"><div class="auth-actions"><button class="primary" onclick="haptic(this);signInCloud().catch(e=>alert('登入失敗：'+(e.message||e)))">登入</button><button class="pill" onclick="haptic(this);signUpCloud().catch(e=>alert('註冊失敗：'+(e.message||e)))">註冊</button></div><div class="auth-version">米杯記帳 V34 測試版</div><button class="modalCancel" style="width:100%;margin-top:10px" onclick="closeModal()">取消</button></div></div>`;
   // 每次重新開啟登入視窗都保持空白，避免瀏覽器沿用上一個帳號。
   setTimeout(()=>{const e=document.getElementById("authEmail"),p=document.getElementById("authPass");if(e)e.value="";if(p)p.value="";},80);
 }
