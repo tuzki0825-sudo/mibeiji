@@ -188,7 +188,55 @@ async function openAuth(){
     })();
     return;
   }
-  modal.innerHTML=`<div class="modal"><div class="sheet authbox"><button type="button" class="close" onclick="closeModal()">×</button><h2>☁️ 米杯雲端</h2><div class="small">登入後可以把目前帳本備份到雲端，並管理私人／共享帳簿。</div><input id="authEmail" type="email" autocomplete="email" placeholder="Email"><input id="authPass" type="password" autocomplete="current-password" placeholder="密碼（至少 6 碼）"><div class="auth-actions"><button class="primary" onclick="haptic(this);signInCloud().catch(e=>alert('登入失敗：'+(e.message||e)))">登入</button><button class="pill" onclick="haptic(this);signUpCloud().catch(e=>alert('註冊失敗：'+(e.message||e)))">註冊</button></div><div class="auth-version">米杯記帳 V28 測試版</div><button class="modalCancel" style="width:100%;margin-top:10px" onclick="closeModal()">取消</button></div></div>`;
+  modal.innerHTML=`<div class="modal"><div class="sheet authbox"><button type="button" class="close" onclick="closeModal()">×</button><h2>☁️ 米杯雲端</h2><div class="small">登入後可以把目前帳本備份到雲端，並管理私人／共享帳簿。</div><input id="authEmail" type="email" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Email"><input id="authPass" type="password" autocomplete="off" placeholder="密碼（至少 6 碼）"><div class="auth-actions"><button class="primary" onclick="haptic(this);signInCloud().catch(e=>alert('登入失敗：'+(e.message||e)))">登入</button><button class="pill" onclick="haptic(this);signUpCloud().catch(e=>alert('註冊失敗：'+(e.message||e)))">註冊</button></div><div class="auth-version">米杯記帳 V29 測試版</div><button class="modalCancel" style="width:100%;margin-top:10px" onclick="closeModal()">取消</button></div></div>`;
+  // 每次重新開啟登入視窗都保持空白，避免瀏覽器沿用上一個帳號。
+  setTimeout(()=>{const e=document.getElementById("authEmail"),p=document.getElementById("authPass");if(e)e.value="";if(p)p.value="";},80);
+}
+
+async function signInCloud(){
+  const email=(document.getElementById("authEmail")?.value||"").trim();
+  const pass=document.getElementById("authPass")?.value||"";
+  if(!email||!pass){alert("請輸入 Email 與密碼");return;}
+  const btn=[...document.querySelectorAll("#modal button")].find(b=>b.textContent.includes("登入"));
+  if(btn){btn.disabled=true;btn.textContent="登入中…";}
+  try{
+    const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+    if(error)throw error;
+    cloudUser=data?.user||null;
+    if(!cloudUser)throw new Error("登入成功但沒有取得使用者資訊");
+    cloudProfile={display_name:""};
+    await refreshAuth();
+    closeModal();
+    startCloudAutoSync();
+    // 帳簿載入放到背景，不阻塞登入成功
+    ensureCloudBook().then(()=>syncBook(cloudBookId,true,true)).catch(e=>console.error("登入後載入帳簿失敗",e));
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="登入";}
+  }
+}
+async function signUpCloud(){
+  const email=(document.getElementById("authEmail")?.value||"").trim();
+  const pass=document.getElementById("authPass")?.value||"";
+  if(!email||!pass||pass.length<6){alert("請輸入 Email 與至少 6 碼密碼");return;}
+  const btn=[...document.querySelectorAll("#modal button")].find(b=>b.textContent.includes("註冊"));
+  if(btn){btn.disabled=true;btn.textContent="註冊中…";}
+  try{
+    const {data,error}=await sb.auth.signUp({email,password:pass});
+    if(error)throw error;
+    if(!data?.user)throw new Error("註冊沒有取得使用者資料");
+    cloudUser=data.user;
+    if(!data.session){
+      alert("註冊成功，但目前帳號尚未登入。若帳號仍要求 Email 驗證，請到 Supabase 確認 Confirm sign up 已關閉，或重新登入。");
+      return;
+    }
+    await refreshAuth();
+    closeModal();
+    startCloudAutoSync();
+    try{await ensureCloudBook();await uploadSnapshot();}
+    catch(e){console.error("註冊後建立帳簿失敗",e);alert("註冊成功，但雲端帳簿尚未建立："+(e.message||e));}
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="註冊";}
+  }
 }
 
 function startCloudAutoSync(){if(cloudAutoTimer)clearInterval(cloudAutoTimer);if(!cloudUser)return;syncCloud(true).catch(e=>console.error("自動同步失敗",e));cloudAutoTimer=setInterval(()=>syncCloud(true).catch(e=>console.error("自動同步失敗",e)),60000);window.removeEventListener("focus",autoCloudCheck);window.addEventListener("focus",autoCloudCheck);window.removeEventListener("online",autoCloudCheck);window.addEventListener("online",autoCloudCheck);}
