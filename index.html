@@ -33,8 +33,8 @@
 .haptic-press.is-pressed{transform:scale(.96);filter:brightness(.96)}
 
 .cloud-status{background:#efe6db;border-radius:12px;padding:10px;font-size:13px;margin:10px 0}.book-section{margin-top:14px}.book-section-title{font-weight:800;margin-bottom:7px}.book-choice{width:100%;display:grid;grid-template-columns:28px 1fr 24px;gap:8px;align-items:center;text-align:left;padding:11px 12px;margin:6px 0;border:1px solid var(--line);border-radius:14px;background:#fffaf2;color:var(--ink)}.book-row{margin:6px 0}.book-row .book-choice{margin:0}.invite-btn{width:100%;margin-top:5px;min-height:42px;font-weight:800}.book-choice.active{border-color:var(--accent);background:#fff3e5}.book-choice-text{display:flex;flex-direction:column;gap:2px}.book-choice-text small{font-size:11px;color:var(--muted)}.book-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.book-actions button{min-height:48px;font-weight:800}.authbox .book-choice{font:inherit}
-.book-tools{display:flex;gap:7px;flex-wrap:wrap;margin:7px 0 0 42px}.book-tools .pill{font-size:12px;padding:7px 10px}.danger-pill{color:var(--red)}
-.book-tools{display:flex;gap:7px;flex-wrap:wrap;margin:7px 0 0 42px}.book-tools .pill{font-size:12px;padding:7px 10px}.danger-pill{color:var(--red)}
+.book-tools{display:flex;gap:7px;flex-wrap:wrap;margin:7px 0 0 42px}.book-tools .pill{font-size:12px;padding:7px 10px}.book-current{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}.danger-pill{color:var(--red)}
+.book-tools{display:flex;gap:7px;flex-wrap:wrap;margin:7px 0 0 42px}.book-tools .pill{font-size:12px;padding:7px 10px}.book-current{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}.danger-pill{color:var(--red)}
 </style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style id="v22-auth-version">
 .authbox .auth-actions + .auth-version{
@@ -74,7 +74,7 @@ async function signOutCloud(){
     localStorage.removeItem("mibeiji_active_book_id");
     localStorage.removeItem("mibeiji_cloud_updated_at");
     const pill=document.getElementById("authPill");
-    if(pill)pill.textContent="☁️ 登入";
+    updateBookPill();
     closeModal();
     alert("已登出雲端帳號");
   }catch(e){
@@ -114,7 +114,7 @@ async function getSnapshot(bookId=cloudBookId){
 async function uploadSnapshot(bookId=cloudBookId, stateToUpload=state){
  if(!cloudUser)return;if(!bookId)await ensureCloudBook();
  const updatedAt=new Date().toISOString();
- const payload={...stateToUpload,_mibeiji_version:34,_mibeiji_book_id:bookId};
+ const payload={...stateToUpload,_mibeiji_version:35,_mibeiji_book_id:bookId};
  const {data,error}=await sb.rpc("save_book_snapshot",{p_book_id:bookId,p_payload:payload,p_updated_at:updatedAt});
  if(error)throw error; const row=Array.isArray(data)?data[0]:data;
  cloudLastUpdatedAt=row?.updated_at||updatedAt;localStorage.setItem("mibeiji_cloud_updated_at",cloudLastUpdatedAt);cloudDirty=false;
@@ -134,7 +134,7 @@ async function switchCloudBook(id){
  if(!cloudUser)return;
  if(cloudDirty&&cloudBookId){await uploadSnapshot(cloudBookId,state)}
  const target=cloudBooks.find(b=>b.id===id);if(!target)return;
- cloudBookId=id;localStorage.setItem("mibeiji_active_book_id",id);cloudLastUpdatedAt="";localStorage.removeItem("mibeiji_cloud_updated_at");
+ cloudBookId=id;localStorage.setItem("mibeiji_active_book_id",id);updateBookPill();cloudLastUpdatedAt="";localStorage.removeItem("mibeiji_cloud_updated_at");
  const snap=await getSnapshot(id);state=snap?normalizeState(snap.payload):normalizeState({});localStorage.setItem(KEY,JSON.stringify(state));cloudDirty=false;render();openAuth();
 }
 async function createSharedBook(){
@@ -165,8 +165,15 @@ async function refreshAuth(){
   }
   if(!cloudUser){cloudProfile={display_name:""};cloudBooks=[];cloudBookId=null;}
   const pill=document.getElementById("authPill");
-  if(pill)pill.textContent=cloudUser?"☁️ "+cloudDisplayName():"☁️ 登入";
+  if(pill){pill.textContent=cloudUser?(activeBook()?"📚 "+bookLabel(activeBook()):"📚 選擇帳簿"):"☁️ 登入";pill.classList.toggle("book-current",!!cloudUser);pill.onclick=cloudUser?()=>{haptic(pill);openBookPicker()}:()=>{haptic(pill);openAuth()};}
 }
+async function openBookPicker(){
+  const modal=document.getElementById("modal");
+  if(!cloudUser){openAuth();return;}
+  modal.innerHTML=`<div class="modal"><div class="sheet authbox"><button type="button" class="close" onclick="closeModal()">×</button><h2>📚 選擇帳簿</h2><div id="pickerStatus" class="cloud-status">載入中…</div><div id="pickerList" class="book-section"></div><div class="book-actions"><button class="pill" onclick="createSharedBook().catch(e=>alert('建立失敗：'+(e.message||e)))">＋ 建立共同帳簿</button><button class="pill" onclick="joinSharedBook().catch(e=>alert('加入失敗：'+(e.message||e)))">🔗 加入共同帳簿</button></div><button class="modalCancel" style="width:100%;margin-top:10px" onclick="openAuth()">☁️ 雲端帳號／管理</button><button type="button" class="modalCancel" style="width:100%;margin-top:8px" onclick="closeModal()">取消</button></div></div>`;
+  try{await ensureCloudBook();const b=activeBook();const status=document.getElementById("pickerStatus");if(status)status.innerHTML=`目前：<b>${esc(bookLabel(b))}</b>${b?`（${b.book_type==='shared'?'共同帳簿':'私人帳簿'}）`:''}`;const wrap=document.getElementById("pickerList");if(wrap)wrap.innerHTML=`<div class="book-section-title">我的帳簿</div>${renderBookList()}`;updateBookPill();}catch(e){const status=document.getElementById("pickerStatus");if(status)status.textContent="帳簿載入失敗："+(e.message||e);}
+}
+function updateBookPill(){const pill=document.getElementById("authPill");if(!pill)return;if(cloudUser){const b=activeBook();pill.textContent=b?"📚 "+bookLabel(b):"📚 選擇帳簿";pill.classList.add("book-current");pill.onclick=()=>{haptic(pill);openBookPicker()};}else{pill.textContent="☁️ 登入";pill.classList.remove("book-current");pill.onclick=()=>{haptic(pill);openAuth()};}}
 async function openAuth(){
   const modal=document.getElementById("modal");
   let user=null;
@@ -185,7 +192,7 @@ async function openAuth(){
     // 非同步載入，不阻塞視窗開啟。
     (async()=>{
       try{await loadCloudProfile();}catch(e){console.error("載入顯示名稱失敗",e);}
-      try{await ensureCloudBook();}catch(e){console.error("載入帳簿失敗",e);}
+      try{await ensureCloudBook();updateBookPill();}catch(e){console.error("載入帳簿失敗",e);}
       const status=document.getElementById("cloudStatus");
       const b=activeBook();
       if(status)status.innerHTML=`登入帳號：${esc(cloudUser.email||"")}<br>目前帳簿：<b>${esc(bookLabel(b))}</b>${b?`（${b.book_type==='shared'?'共享':'私人'}）`:"（尚未載入）"}`;
@@ -195,7 +202,7 @@ async function openAuth(){
     })();
     return;
   }
-  modal.innerHTML=`<div class="modal"><div class="sheet authbox"><button type="button" class="close" onclick="closeModal()">×</button><h2>☁️ 米杯雲端</h2><div class="small">登入後可以把目前帳本備份到雲端，並管理私人／共享帳簿。</div><input id="authEmail" type="email" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Email"><input id="authPass" type="password" autocomplete="off" placeholder="密碼（至少 6 碼）"><div class="auth-actions"><button class="primary" onclick="haptic(this);signInCloud().catch(e=>alert('登入失敗：'+(e.message||e)))">登入</button><button class="pill" onclick="haptic(this);signUpCloud().catch(e=>alert('註冊失敗：'+(e.message||e)))">註冊</button></div><div class="auth-version">米杯記帳 V34 測試版</div><button class="modalCancel" style="width:100%;margin-top:10px" onclick="closeModal()">取消</button></div></div>`;
+  modal.innerHTML=`<div class="modal"><div class="sheet authbox"><button type="button" class="close" onclick="closeModal()">×</button><h2>☁️ 米杯雲端</h2><div class="small">登入後可以把目前帳本備份到雲端，並管理私人／共享帳簿。</div><input id="authEmail" type="email" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Email"><input id="authPass" type="password" autocomplete="off" placeholder="密碼（至少 6 碼）"><div class="auth-actions"><button class="primary" onclick="haptic(this);signInCloud().catch(e=>alert('登入失敗：'+(e.message||e)))">登入</button><button class="pill" onclick="haptic(this);signUpCloud().catch(e=>alert('註冊失敗：'+(e.message||e)))">註冊</button></div><div class="auth-version">米杯記帳 V35 測試版</div><button class="modalCancel" style="width:100%;margin-top:10px" onclick="closeModal()">取消</button></div></div>`;
   // 每次重新開啟登入視窗都保持空白，避免瀏覽器沿用上一個帳號。
   setTimeout(()=>{const e=document.getElementById("authEmail"),p=document.getElementById("authPass");if(e)e.value="";if(p)p.value="";},80);
 }
@@ -216,7 +223,7 @@ async function signInCloud(){
     closeModal();
     startCloudAutoSync();
     // 帳簿載入放到背景，不阻塞登入成功
-    ensureCloudBook().then(()=>syncBook(cloudBookId,true,true)).catch(e=>console.error("登入後載入帳簿失敗",e));
+    ensureCloudBook().then(()=>{updateBookPill();return syncBook(cloudBookId,true,true)}).catch(e=>console.error("登入後載入帳簿失敗",e));
   }finally{
     if(btn){btn.disabled=false;btn.textContent="登入";}
   }
@@ -263,8 +270,8 @@ let state=old||{entries:[],cats:[["🍚","吃飯"],["🏠","房租"],["🚗","�
 state=normalizeState(state);
 if(!state.incomeCats)state.incomeCats=[["💼","薪水"],["🎁","獎金"],["📈","投資"],["💰","副業"],["🎉","紅包"],["↩️","退款"]];
 if(!state.budgets)state.budgets={};if(!state.fixedExpenses)state.fixedExpenses=[];localStorage.setItem(KEY,JSON.stringify(state));
-let page="home",type="expense",amount="",selectedCat=state.cats[0]?.[1]||"吃飯",selectedAccount="";
-const money=n=>"$"+Math.round(n||0).toLocaleString("zh-TW"),today=()=>new Date().toISOString().slice(0,10),monthKey=(d=today())=>d.slice(0,7);
+let page="home",type="expense",amount="",selectedCat=state.cats[0]?.[1]||"吃飯",selectedAccount="",homeMode="day";
+const money=n=>"$"+Math.round(n||0).toLocaleString("zh-TW"),today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`},monthKey=(d=today())=>d.slice(0,7);
 document.getElementById("dateText").textContent=new Date().toLocaleDateString("zh-TW",{year:"numeric",month:"long",day:"numeric"});
 const save=()=>{localStorage.setItem(KEY,JSON.stringify(state));render();if(cloudUser){cloudDirty=true;uploadSnapshot().catch(e=>console.error("雲端同步失敗",e))}},esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function inc(k){return state.entries.filter(e=>e.date.startsWith(k)&&e.type==="income").reduce((s,e)=>s+e.amount,0)}function exp(k){return state.entries.filter(e=>e.date.startsWith(k)&&e.type==="expense").reduce((s,e)=>s+e.amount,0)}
@@ -272,20 +279,37 @@ function accBal(a){return a.initial+state.entries.filter(e=>e.accountId===a.id).
 function spent(k,c){return state.entries.filter(e=>e.date.startsWith(k)&&e.type==="expense"&&e.cat===c).reduce((s,e)=>s+e.amount,0)}
 function budget(k,c){return Number(state.budgets[k]?.[c]||0)}function render(){document.querySelectorAll(".nav button[data-page]").forEach(b=>b.classList.toggle("on",b.dataset.page===page));root.innerHTML=page==="home"?home():page==="stats"?stats():page==="budget"?budgetPage():accounts();bind()}
 function home(){
- let k=monthKey(),assets=state.accounts.reduce((s,a)=>s+accBal(a),0),income=inc(k),expense=exp(k),net=income-expense;
- let totalB=Object.entries(state.budgets[k]||{}).filter(([x])=>x!=="income").reduce((s,[,v])=>s+Number(v||0),0);
- let rows=state.cats.map(c=>[c[1],spent(k,c[1])]).sort((a,b)=>b[1]-a[1]);
- let max=Math.max(assets,income,expense,Math.abs(net),1);
+ const day=today(), k=monthKey(day);
+ const assets=state.accounts.reduce((s,a)=>s+accBal(a),0);
+ const incomeDay=state.entries.filter(e=>e.date===day&&e.type==="income").reduce((s,e)=>s+e.amount,0);
+ const expenseDay=state.entries.filter(e=>e.date===day&&e.type==="expense").reduce((s,e)=>s+e.amount,0);
+ const netDay=incomeDay-expenseDay;
+ const incomeMonth=inc(k), expenseMonth=exp(k), netMonth=incomeMonth-expenseMonth;
+ const rows=state.cats.map(c=>[c[1],spent(k,c[1])]).sort((a,b)=>b[1]-a[1]);
+ const dayRows=state.entries.filter(e=>e.date===day).slice().sort((a,b)=>b.id-a.id);
+ const monthRows=state.entries.filter(e=>e.date.startsWith(k)).slice().sort((a,b)=>b.id-a.id);
+ const totalB=Object.entries(state.budgets[k]||{}).filter(([x])=>x!=="income").reduce((sum,[,v])=>sum+Number(v||0),0);
+ const max=Math.max(assets,incomeDay,expenseDay,Math.abs(netDay),1);
  const bar=(label,val,cls)=>`<div class="dashbar"><div class="row"><span>${label}</span><b class="${cls||""}">${val<0?"-":""}${money(Math.abs(val))}</b></div><div class="dashtrack"><div class="dashfill ${cls||""}" style="width:${Math.min(100,Math.abs(val)/max*100)}%"></div></div></div>`;
- return `<div class="page">
- <div class="card dashboard"><div class="hero">📊 本月財務總覽</div><div class="dashtitle">${k.replace("-"," 年 ")} 月</div>
+ const d=new Date(day+"T00:00:00");
+ const dayLabel=d.toLocaleDateString("zh-TW",{year:"numeric",month:"long",day:"numeric",weekday:"short"});
+ if(homeMode==="month") return `<div class="page">
+ <div class="card dashboard"><div class="hero row"><span>📊 財務總覽</span><div class="tabs" style="margin:0"><button class="active" onclick="homeMode='month';render()">本月</button><button onclick="homeMode='day';render()">今日</button></div></div><div class="dashtitle">${k.replace("-"," 年 ")} 月</div>
  <div class="assetbox"><span>目前總資產</span><strong>${money(assets)}</strong></div>
- ${bar("本月收入",income,"green")}${bar("本月支出",-expense,"red")}${bar("本月淨收入",net,net>=0?"green":"red")}
+ ${bar("本月收入",incomeMonth,"green")}${bar("本月支出",-expenseMonth,"red")}${bar("本月淨收入",netMonth,netMonth>=0?"green":"red")}
  </div>
- <div class="card"><div class="row"><b>🎯 本月預算</b><span>${money(expense)} / ${money(totalB)}</span></div><div class="progress"><div class="bar ${totalB&&expense>totalB?"over":""}" style="width:${Math.min(100,totalB?expense/totalB*100:0)}%"></div></div><div class="small">${totalB?(expense>totalB?"已超支 "+money(expense-totalB):"還剩 "+money(totalB-expense)+" 可以使用"):"尚未設定本月預算"}</div></div>
+ <div class="card"><div class="row"><b>🎯 本月預算</b><span>${money(expenseMonth)} / ${money(totalB)}</span></div><div class="progress"><div class="bar ${totalB&&expenseMonth>totalB?"over":""}" style="width:${Math.min(100,totalB?expenseMonth/totalB*100:0)}%"></div></div><div class="small">${totalB?(expenseMonth>totalB?"已超支 "+money(expenseMonth-totalB):"還剩 "+money(totalB-expenseMonth)+" 可以使用"):"尚未設定本月預算"}</div></div>
  <div class="card"><div class="row"><b>📌 本月花費排行</b><button class="pill" onclick="page='stats';render()">查看統計 →</button></div>${rows.filter(x=>x[1]>0).slice(0,5).map(x=>`<div class="budgetline"><div class="row"><span>${esc(x[0])}</span><b>${money(x[1])}</b></div></div>`).join("")||'<div class="empty">本月還沒有支出</div>'}</div>
- <div class="card"><div class="row"><b>🕒 最近交易</b><span class="small">${k}</span></div>${records(state.entries.slice().sort((a,b)=>b.id-a.id).slice(0,5))}</div>
- </div>`
+ <div class="card"><div class="row"><b>🕒 本月最近交易</b><span class="small">${k}</span></div>${records(monthRows.slice(0,5))}</div>
+ </div>`;
+ return `<div class="page">
+ <div class="card dashboard"><div class="hero row"><span>📊 今日總覽</span><div class="tabs" style="margin:0"><button class="active" onclick="homeMode='day';render()">今日</button><button onclick="homeMode='month';render()">本月</button></div></div><div class="dashtitle">${dayLabel}</div>
+ <div class="assetbox"><span>目前總資產</span><strong>${money(assets)}</strong></div>
+ ${bar("今日收入",incomeDay,"green")}${bar("今日支出",-expenseDay,"red")}${bar("今日淨額",netDay,netDay>=0?"green":"red")}
+ </div>
+ <div class="card"><div class="row"><b>🕒 今日交易</b><span class="small">${day}</span></div>${records(dayRows.slice(0,10))}</div>
+ <div class="card"><div class="row"><b>📅 本月快速摘要</b><button class="pill" onclick="homeMode='month';render()">查看整月 →</button></div><div class="grid2"><div class="stat">本月收入<b class="green">${money(incomeMonth)}</b></div><div class="stat">本月支出<b class="red">${money(expenseMonth)}</b></div></div><div class="small" style="margin-top:8px">本月淨額 ${money(netMonth)}</div></div>
+ </div>`;
 }
 function closeModal(){const m=document.getElementById("modal"); if(m){m.innerHTML=""; m.onclick=null; m.ontouchend=null;}}
 document.addEventListener("click",function(e){if(e.target.closest("#entryClose,#entryCancel")){e.preventDefault();e.stopPropagation();closeModal();}},true);
@@ -354,9 +378,8 @@ function addEntry(){
   const note=document.getElementById("note")?.value||window._entryNote||"";
   const entry={id:Date.now(),date:today(),type,amount:n,cat:selectedCat,accountId:selectedAccount||"",note};
   state.entries.push(entry);
-  localStorage.setItem(KEY,JSON.stringify(state));
+  save();
   closeModal();
-  render();
 }
 function addIncomeOrExpenseCat(){let n=prompt("新增"+(type==="income"?"收入":"支出")+"分類名稱");if(!n)return;let e=prompt("分類圖示","📌")||"📌";(type==="income"?state.incomeCats:state.cats).push([e,n]);openAdd()}
 function records(arr){if(!arr.length)return '<div class="empty">目前沒有紀錄</div>';return arr.map(e=>`<div class="record"><div class="row"><span>${e.type==="income"?"💰":"🧾"} ${esc(e.cat)}</span><span class="${e.type==="income"?"green":"red"} money">${e.type==="income"?"+":"-"}${money(e.amount)}</span></div><div class="small">${e.date}${e.note?" · "+esc(e.note):""}${e.accountId?" · "+esc(state.accounts.find(a=>a.id===e.accountId)?.name||""):" · 不指定帳戶"}</div><button class="small" onclick="del(${e.id})">刪除</button></div>`).join("")}
